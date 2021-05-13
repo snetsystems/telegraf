@@ -1,0 +1,24 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "showLog": true,
+      "buildFlags": "-ldflags='-X main.version=1.18.2-snet'",
+      "program": "${workspaceFolder}/cmd/telegraf",
+      "output": "windows/telegraf_debug.exe",
+      "env": {},
+      "args": [
+        "--test",
+        "--debug",
+        "--config=${workspaceFolder}\\etc\\telegraf_test.conf" // "\\" for Windows path
+      ]
+    }
+  ]
+}

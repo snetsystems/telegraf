@@ -5,4 +5,9 @@
 /telegraf.gz
 /vendor
 .DS_Store
+go.sum
 process.yml
+telegraf_test.conf
+telegraf_debug.exe
+*.log
+*.out
