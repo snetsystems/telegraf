@@ -10,3 +10,4 @@ process.yml
 telegraf_test.conf
 telegraf_debug.exe
 *.log
+*.out
