@@ -20,6 +20,7 @@ const (
 	pluginName     = "oracledb"
 )
 
+// OracleDB connection infos & operations
 type OracleDB struct {
 	ConnectionString string  `toml:"connection_string"`
 	Username         string  `toml:"username"`
@@ -43,18 +44,19 @@ type query struct {
 
 var sampleConfig = `
   ## Connection string, e.g. easy connect string like 
-  #    "host:port/service_name"
+  connection_string = "192.168.56.105:1521/xe"
   #  or oracle net connect descriptor string like 
   #    (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=dbhost.example.com)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=orclpdb1)))
-  connection_string = ""
+  # connection_string = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.56.105)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XE)))"
   ## Database credentials
-  username = ""
-  password = ""
+  username = "system"
+  password = "oracle"
   ## Role, either SYSDBA, SYSASM, SYSOPER or empty
   role = ""
   ## Path to the Oracle Client library directory, optional.
-  # Should be used if there is no LD_LIBRARY_PATH variable(mac and windows).
-  client_lib_dir = ""
+  # Should be used if there is no LD_LIBRARY_PATH variable 
+  # or not possible to confugire it properly.
+  client_lib_dir = "C:/Oracle/instantclient_19_11"
   ## Define the toml config where the sql queries are stored
   # Structure :
   # [[inputs.oracledb.query]]
@@ -66,7 +68,7 @@ var sampleConfig = `
     # Query name, optional. Used in logging.
     name = ""
     # OracleDB sql query
-    sqlquery = "SELECT 1 AS \"alive\", 'some_value' as \"some_tag\" FROM dual"
+    sqlquery = "select n.wait_class as wait_class, round(m.time_waited/m.INTSIZE_CSEC,3) wait_value from   v$waitclassmetric  m, v$system_wait_class n where m.wait_class_id=n.wait_class_id and n.wait_class != 'Idle' union select  'CPU', round(value/100,3) wait_value from v$sysmetric where metric_name='CPU Usage Per Sec' and group_id=2 union select 'CPU_OS', round((prcnt.busy*parameter.cpu_count)/100,3) - aas.cpu from ( select value busy from v$sysmetric where metric_name='Host CPU Utilization (%)' and group_id=2 ) prcnt, ( select value cpu_count from v$parameter where name='cpu_count' )  parameter, ( select  'CPU', round(value/100,3) cpu from v$sysmetric where metric_name='CPU Usage Per Sec' and group_id=2) aas"
     # The script option can be used to specify the .sql file path.
     # If script and sqlquery options specified at same time, sqlquery will be used.
     script = ""
@@ -75,17 +77,34 @@ var sampleConfig = `
     # Query execution timeout, in seconds.
     timeout = 10
     # Array of column names, which would be stored as tags
-    tag_columns = []
+    tag_columns = ["WAIT_CLASS"]
+  [[inputs.oracledb.query]]
+    # Query name, optional. Used in logging.
+    name = ""
+    # OracleDB sql query
+    sqlquery = "select n.wait_class wait_class, n.name wait_name, m.wait_count cnt, round(10*m.time_waited/nullif(m.wait_count,0),3) avgms from v$eventmetric m, v$event_name n where m.event_id=n.event_id and n.wait_class <> 'Idle' and m.wait_count > 0 order by 1"
+    # The script option can be used to specify the .sql file path.
+    # If script and sqlquery options specified at same time, sqlquery will be used.
+    script = ""
+    # Schema name. If provided, then ALTER SESSION SET CURRENT_SCHEMA query will be executed
+    schema = ""
+    # Query execution timeout, in seconds.
+    timeout = 10
+    # Array of column names, which would be stored as tags
+    tag_columns = ["WAIT_CLASS"]
 `
 
+// SampleConfig to implement PluginDescriber interface
 func (o *OracleDB) SampleConfig() string {
 	return sampleConfig
 }
 
+// Description to implement PluginDescriber interface
 func (o *OracleDB) Description() string {
 	return "Read metrics from one or many oracle database servers"
 }
 
+// Init to implement Initializer interface
 func (o *OracleDB) Init() error {
 	var err error
 
@@ -105,6 +124,7 @@ func (o *OracleDB) Init() error {
 	return nil
 }
 
+// Gather to implement Input interface
 func (o *OracleDB) Gather(acc telegraf.Accumulator) error {
 	dbinfo, err := o.getDBInfo()
 	if err != nil {
@@ -130,7 +150,8 @@ func (o *OracleDB) Gather(acc telegraf.Accumulator) error {
 			q.Timeout = defaultTimeout
 		}
 
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(q.Timeout)*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(q.Timeout)*time.Second)
+		defer cancel()
 
 		rows, err := o.DB.QueryContext(ctx, q.Sqlquery)
 		if err != nil {

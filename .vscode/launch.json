@@ -15,9 +15,11 @@
       "output": "windows/telegraf_debug.exe",
       "env": {},
       "args": [
-        "--test",
-        "--debug",
-        "--config=${workspaceFolder}\\etc\\telegraf_test.conf" // "\\" for Windows path
+        // "--once", // just once run
+        "--test", // without output plugin
+        "--debug", // log level
+        "--input-filter=oracledb", // apply the oracledb input plugin only
+        "--config=${workspaceFolder}\\etc\\telegraf_win_test.conf" // "\\" for Windows path
       ]
     }
   ]
