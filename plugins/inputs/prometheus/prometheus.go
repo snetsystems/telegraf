@@ -18,8 +18,8 @@ import (
 	"github.com/influxdata/telegraf/plugins/common/tls"
 	"github.com/influxdata/telegraf/plugins/inputs"
 	parser_v2 "github.com/influxdata/telegraf/plugins/parsers/prometheus"
-	"github.com/kubernetes/apimachinery/pkg/fields"
-	"github.com/kubernetes/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const acceptHeader = `application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3,*/*;q=0.1`
@@ -58,7 +58,8 @@ type Prometheus struct {
 
 	Log telegraf.Logger
 
-	client *http.Client
+	client  *http.Client
+	headers map[string]string
 
 	// Should we scrape Kubernetes services for prometheus annotations
 	MonitorPods       bool   `toml:"monitor_kubernetes_pods"`
@@ -275,6 +276,10 @@ func (p *Prometheus) Gather(acc telegraf.Accumulator) error {
 			return err
 		}
 		p.client = client
+		p.headers = map[string]string{
+			"User-Agent": internal.ProductToken(),
+			"Accept":     acceptHeader,
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -352,7 +357,7 @@ func (p *Prometheus) gatherURL(u URLAndAddress, acc telegraf.Accumulator) error 
 		}
 	}
 
-	req.Header.Add("Accept", acceptHeader)
+	p.addHeaders(req)
 
 	if p.BearerToken != "" {
 		token, err := ioutil.ReadFile(p.BearerToken)
@@ -427,6 +432,12 @@ func (p *Prometheus) gatherURL(u URLAndAddress, acc telegraf.Accumulator) error 
 	}
 
 	return nil
+}
+
+func (p *Prometheus) addHeaders(req *http.Request) {
+	for header, value := range p.headers {
+		req.Header.Add(header, value)
+	}
 }
 
 /* Check if the field selector specified is valid.
