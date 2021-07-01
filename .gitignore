@@ -6,3 +6,6 @@
 /vendor
 .DS_Store
 process.yml
+telegraf_debug.exe
+*.log
+*.out
