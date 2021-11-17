@@ -123,8 +123,9 @@ require (
 	github.com/tbrandon/mbserver v0.0.0-20170611213546-993e1772cc62
 	github.com/testcontainers/testcontainers-go v0.11.1
 	github.com/tidwall/gjson v1.8.0
-	github.com/tinylib/msgp v1.1.5
+	github.com/tinylib/msgp v1.1.6
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
+	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31 // indirect
 	github.com/vapourismo/knx-go v0.0.0-20201122213738-75fe09ace330
 	github.com/vjeantet/grok v1.0.1
 	github.com/vmware/govmomi v0.26.0
