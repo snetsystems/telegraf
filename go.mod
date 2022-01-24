@@ -3,9 +3,9 @@ module github.com/influxdata/telegraf
 go 1.16
 
 require (
-	cloud.google.com/go v0.56.0
-	cloud.google.com/go/bigquery v1.4.0
-	cloud.google.com/go/pubsub v1.2.0
+	cloud.google.com/go v0.65.0
+	cloud.google.com/go/bigquery v1.8.0
+	cloud.google.com/go/pubsub v1.3.1
 	code.cloudfoundry.org/clock v1.0.0 // indirect
 	collectd.org v0.5.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.2.0
@@ -105,10 +105,10 @@ require (
 	github.com/openzipkin/zipkin-go-opentracing v0.3.4
 	github.com/pion/dtls/v2 v2.0.9
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_golang v1.12.0
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.15.0
-	github.com/prometheus/procfs v0.6.0
+	github.com/prometheus/common v0.32.1
+	github.com/prometheus/procfs v0.7.3
 	github.com/prometheus/prometheus v1.8.2-0.20200911110723-e83ef207b6c2
 	github.com/riemann/riemann-go-client v0.5.0
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664
@@ -138,14 +138,14 @@ require (
 	go.starlark.net v0.0.0-20210406145628-7a1108eaa012
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
-	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
+	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	golang.org/x/text v0.3.6
 	golang.org/x/tools v0.1.2
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200205215550-e35592f146e4
-	google.golang.org/api v0.29.0
+	google.golang.org/api v0.30.0
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
 	gopkg.in/djherbis/times.v1 v1.2.0
