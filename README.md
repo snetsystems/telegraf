@@ -1,9 +1,8 @@
 # Telegraf [![Circle CI](https://circleci.com/gh/influxdata/telegraf.svg?style=svg)](https://circleci.com/gh/influxdata/telegraf) [![Docker pulls](https://img.shields.io/docker/pulls/library/telegraf.svg)](https://hub.docker.com/_/telegraf/) [![Total alerts](https://img.shields.io/lgtm/alerts/g/influxdata/telegraf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/influxdata/telegraf/alerts/)
 
-
 # Telegraf
 
-![tiger](TelegrafTiger.png "tiger")
+![tiger](TelegrafTiger.png 'tiger')
 
 [![Circle CI](https://circleci.com/gh/influxdata/telegraf.svg?style=svg)](https://circleci.com/gh/influxdata/telegraf) [![Docker pulls](https://img.shields.io/docker/pulls/library/telegraf.svg)](https://hub.docker.com/_/telegraf/) [![Total alerts](https://img.shields.io/lgtm/alerts/g/influxdata/telegraf.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/influxdata/telegraf/alerts/)
 [![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://www.influxdata.com/slack)
@@ -346,7 +345,6 @@ For documentation on the latest development code see the [documentation index][d
 - [sql](./plugins/inputs/sql) (generic SQL query plugin)
 - [sql server](./plugins/inputs/sqlserver) (microsoft)
 - [stackdriver](./plugins/inputs/stackdriver) (Google Cloud Monitoring)
-- [sql](./plugins/outputs/sql) (SQL generic output)
 - [statsd](./plugins/inputs/statsd)
 - [suricata](./plugins/inputs/suricata)
 - [swap](./plugins/inputs/swap)
@@ -485,6 +483,7 @@ For documentation on the latest development code see the [documentation index][d
 - [sensu](./plugins/outputs/sensu)
 - [signalfx](./plugins/outputs/signalfx)
 - [socket_writer](./plugins/outputs/socket_writer)
+- [sql](./plugins/outputs/sql) (SQL generic output)
 - [stackdriver](./plugins/outputs/stackdriver) (Google Cloud Monitoring)
 - [syslog](./plugins/outputs/syslog)
 - [tcp](./plugins/outputs/socket_writer)
