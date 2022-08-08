@@ -67,7 +67,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-github/v32 v32.1.0
 	github.com/gopcua/opcua v0.1.13
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gosnmp/gosnmp v1.32.0
 	github.com/grid-x/modbus v0.0.0-20210224155242-c4a3d042e99b
@@ -138,12 +138,12 @@ require (
 	go.starlark.net v0.0.0-20210406145628-7a1108eaa012
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
-	golang.org/x/text v0.3.6
-	golang.org/x/tools v0.1.2
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
+	golang.org/x/text v0.3.7
+	golang.org/x/tools v0.1.5
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200205215550-e35592f146e4
 	google.golang.org/api v0.29.0
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
@@ -157,7 +157,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.20.4
-	k8s.io/apimachinery v0.21.1
+	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.20.4
 	modernc.org/sqlite v1.10.8
 )
