@@ -12,3 +12,8 @@ process.yml
 /*.conf
 resource.syso
 versioninfo.json
+
+telegraf_debug.exe
+*.log
+*.out
+nul
