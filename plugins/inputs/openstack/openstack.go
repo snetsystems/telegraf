@@ -75,8 +75,10 @@ type OpenStack struct {
 	TagValue         string          `toml:"tag_value"`
 	HumanReadableTS  bool            `toml:"human_readable_timestamps"`
 	MeasureRequest   bool            `toml:"measure_openstack_requests"`
+	AllTenants       bool            `toml:"all_tenants"`
 	Log              telegraf.Logger `toml:"-"`
 	httpconfig.HTTPClientConfig
+	ProjectID string
 
 	// Locally cached clients
 	identity *gophercloud.ServiceClient
@@ -246,6 +248,30 @@ func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
 		o.accumulateServerDiagnostics(acc)
 	}
 
+	if !o.AllTenants {
+		if !choice.Contains("projects", o.EnabledServices) {
+			page, err := projects.List(o.identity, &projects.ListOpts{}).AllPages()
+			if err != nil {
+				return fmt.Errorf("unable to list projects %v", err)
+			}
+			extractedProjects, err := projects.ExtractProjects(page)
+			if err != nil {
+				return fmt.Errorf("unable to extract projects %v", err)
+			}
+			for _, project := range extractedProjects {
+				if project.Name == o.Project {
+					o.ProjectID = project.ID
+				}
+			}
+		} else {
+			for _, project := range o.openstackProjects {
+				if project.Name == o.Project {
+					o.ProjectID = project.ID
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -268,7 +294,7 @@ func (o *OpenStack) gatherServices() error {
 
 // gatherStacks collects and accumulates stacks data from the OpenStack API.
 func (o *OpenStack) gatherStacks(acc telegraf.Accumulator) error {
-	page, err := stacks.List(o.stack, &stacks.ListOpts{}).AllPages()
+	page, err := stacks.List(o.stack, &stacks.ListOpts{TenantID: o.ProjectID}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list stacks %v", err)
 	}
@@ -329,7 +355,7 @@ func (o *OpenStack) gatherNovaServices(acc telegraf.Accumulator) error {
 
 // gatherSubnets collects and accumulates subnets data from the OpenStack API.
 func (o *OpenStack) gatherSubnets(acc telegraf.Accumulator) error {
-	page, err := subnets.List(o.network, &subnets.ListOpts{}).AllPages()
+	page, err := subnets.List(o.network, &subnets.ListOpts{ProjectID: o.ProjectID}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list subnets %v", err)
 	}
@@ -371,7 +397,7 @@ func (o *OpenStack) gatherSubnets(acc telegraf.Accumulator) error {
 
 // gatherPorts collects and accumulates ports data from the OpenStack API.
 func (o *OpenStack) gatherPorts(acc telegraf.Accumulator) error {
-	page, err := ports.List(o.network, &ports.ListOpts{}).AllPages()
+	page, err := ports.List(o.network, &ports.ListOpts{ProjectID: o.ProjectID}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list ports %v", err)
 	}
@@ -416,7 +442,7 @@ func (o *OpenStack) gatherPorts(acc telegraf.Accumulator) error {
 
 // gatherNetworks collects and accumulates networks data from the OpenStack API.
 func (o *OpenStack) gatherNetworks(acc telegraf.Accumulator) error {
-	page, err := networks.List(o.network, &networks.ListOpts{}).AllPages()
+	page, err := networks.List(o.network, &networks.ListOpts{ProjectID: o.ProjectID}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list networks %v", err)
 	}
@@ -526,7 +552,14 @@ func (o *OpenStack) gatherAggregates(acc telegraf.Accumulator) error {
 
 // gatherProjects collects and accumulates projects data from the OpenStack API.
 func (o *OpenStack) gatherProjects(acc telegraf.Accumulator) error {
-	page, err := projects.List(o.identity, &projects.ListOpts{}).AllPages()
+	var tenantName string
+	if o.AllTenants {
+		tenantName = ""
+	} else {
+		tenantName = o.Project
+
+	}
+	page, err := projects.List(o.identity, &projects.ListOpts{Name: tenantName}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list projects %v", err)
 	}
@@ -641,7 +674,7 @@ func (o *OpenStack) gatherFlavors(acc telegraf.Accumulator) error {
 
 // gatherVolumes collects and accumulates volumes data from the OpenStack API.
 func (o *OpenStack) gatherVolumes(acc telegraf.Accumulator) error {
-	page, err := volumes.List(o.volume, &volumes.ListOpts{AllTenants: true}).AllPages()
+	page, err := volumes.List(o.volume, &volumes.ListOpts{AllTenants: o.AllTenants, TenantID: o.ProjectID}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list volumes %v", err)
 	}
@@ -696,7 +729,7 @@ func (o *OpenStack) gatherVolumes(acc telegraf.Accumulator) error {
 
 // gatherStoragePools collects and accumulates storage pools data from the OpenStack API.
 func (o *OpenStack) gatherStoragePools(acc telegraf.Accumulator) error {
-	results, err := schedulerstats.List(o.volume, &schedulerstats.ListOpts{Detail: true}).AllPages()
+	results, err := schedulerstats.List(o.volume, &schedulerstats.ListOpts{Detail: true, TenantID: o.ProjectID}).AllPages()
 	if err != nil {
 		return fmt.Errorf("unable to list storage pools %v", err)
 	}
@@ -730,7 +763,7 @@ func (o *OpenStack) gatherServers(acc telegraf.Accumulator) error {
 	}
 	serverGather := choice.Contains("servers", o.EnabledServices)
 	for _, hypervisor := range o.openstackHypervisors {
-		page, err := servers.List(o.compute, &servers.ListOpts{AllTenants: true, Host: hypervisor.HypervisorHostname}).AllPages()
+		page, err := servers.List(o.compute, &servers.ListOpts{AllTenants: o.AllTenants, TenantID: o.ProjectID, Host: hypervisor.HypervisorHostname}).AllPages()
 		if err != nil {
 			return fmt.Errorf("unable to list servers %v", err)
 		}
