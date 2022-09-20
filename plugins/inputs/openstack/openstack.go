@@ -199,6 +199,21 @@ func (o *OpenStack) Init() error {
 // Gather gathers resources from the OpenStack API and accumulates metrics.  This
 // implements the Input interface.
 func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
+	if !o.AllTenants {
+		page, err := projects.List(o.identity, &projects.ListOpts{}).AllPages()
+		if err != nil {
+			return fmt.Errorf("unable to list projects %v", err)
+		}
+		extractedProjects, err := projects.ExtractProjects(page)
+		if err != nil {
+			return fmt.Errorf("unable to extract projects %v", err)
+		}
+		for _, project := range extractedProjects {
+			if project.Name == o.Project {
+				o.ProjectID = project.ID
+			}
+		}
+	}
 	// Gather resources.  Note service harvesting must come first as the other
 	// gatherers are dependant on this information.
 	gatherers := map[string]func(telegraf.Accumulator) error{
@@ -246,30 +261,6 @@ func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
 			}
 		}
 		o.accumulateServerDiagnostics(acc)
-	}
-
-	if !o.AllTenants {
-		if !choice.Contains("projects", o.EnabledServices) {
-			page, err := projects.List(o.identity, &projects.ListOpts{}).AllPages()
-			if err != nil {
-				return fmt.Errorf("unable to list projects %v", err)
-			}
-			extractedProjects, err := projects.ExtractProjects(page)
-			if err != nil {
-				return fmt.Errorf("unable to extract projects %v", err)
-			}
-			for _, project := range extractedProjects {
-				if project.Name == o.Project {
-					o.ProjectID = project.ID
-				}
-			}
-		} else {
-			for _, project := range o.openstackProjects {
-				if project.Name == o.Project {
-					o.ProjectID = project.ID
-				}
-			}
-		}
 	}
 
 	return nil
