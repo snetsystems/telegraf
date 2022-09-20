@@ -260,6 +260,8 @@ require (
 	software.sslmate.com/src/go-pkcs12 v0.7.0
 )
 
+require github.com/godror/godror v0.25.3
+
 require (
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
