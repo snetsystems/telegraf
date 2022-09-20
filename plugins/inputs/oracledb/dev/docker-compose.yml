@@ -1,0 +1,9 @@
+version: '3'
+services:
+  oracle11g:
+    image: jaspeen/oracle-xe-11g
+    container_name: oracle11g
+    volumes:
+      - ./ora11g/data:/u01/app/oracle
+    ports:
+      - 1521:1521

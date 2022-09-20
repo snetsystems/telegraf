@@ -231,6 +231,8 @@ require (
 	modernc.org/sqlite v1.30.0
 )
 
+require github.com/godror/godror v0.25.3
+
 require (
 	cloud.google.com/go v0.115.0 // indirect
 	cloud.google.com/go/auth v0.7.2 // indirect
