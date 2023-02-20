@@ -53,7 +53,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/djherbis/times v1.5.0
-	github.com/docker/docker v20.10.17+incompatible
+	github.com/docker/docker v23.0.1+incompatible
 	github.com/doclambda/protobufquery v0.0.0-20210317203640-88ffabe06a60
 	github.com/dynatrace-oss/dynatrace-metric-utils-go v0.5.0
 	github.com/eclipse/paho.mqtt.golang v1.4.1
@@ -194,7 +194,6 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20220621081337-cb9428e4ac1e // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.4 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/alecthomas/participle v0.4.1 // indirect
@@ -285,7 +284,8 @@ require (
 	github.com/mdlayher/netlink v1.6.0 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/moby/sys/mount v0.2.0 // indirect
+	github.com/moby/patternmatcher v0.5.0 // indirect
+	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -366,7 +366,6 @@ require (
 	github.com/armon/go-metrics v0.3.3 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.5.3 // indirect
 	github.com/bitly/go-hostpool v0.1.0 // indirect
-	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/containerd/containerd v1.6.7 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/couchbase/gomemcached v0.1.3 // indirect
@@ -382,7 +381,6 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mdlayher/socket v0.2.3 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/opencontainers/runc v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
