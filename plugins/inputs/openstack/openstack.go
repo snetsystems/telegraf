@@ -143,7 +143,7 @@ func (o *OpenStack) Init() error {
 		TenantName:       o.Project,
 		Username:         o.Username,
 		Password:         o.Password,
-		AllowReauth: true,
+		AllowReauth: 	  true,
 	}
 	provider, err := openstack.NewClient(authOption.IdentityEndpoint)
 	if err != nil {
@@ -775,6 +775,7 @@ func (o *OpenStack) gatherServers(acc telegraf.Accumulator) error {
 				acc.AddError(fmt.Errorf("unable to get diagnostics for server(%v) %v", server.ID, err))
 				continue
 			}
+			diagnostic["server_name"] = server.Name
 			o.diag[server.ID] = diagnostic
 		}
 	}
@@ -870,6 +871,7 @@ func (o *OpenStack) accumulateServerDiagnostics(acc telegraf.Accumulator) {
 		}
 		tags := map[string]string{
 			"server_id": serverID,
+			"server_name": s["server_name"].(string),
 		}
 		fields := map[string]interface{}{}
 		portName := make(map[string]bool)
