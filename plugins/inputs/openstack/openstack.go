@@ -114,11 +114,12 @@ func (o *OpenStack) convertTimeFormat(t time.Time) interface{} {
 	return t.UnixNano()
 }
 
+// SampleConfig is just return a sample config
 func (*OpenStack) SampleConfig() string {
 	return sampleConfig
 }
 
-// initialize performs any necessary initialization functions
+// Init : initialize performs any necessary initialization functions
 func (o *OpenStack) Init() error {
 	if len(o.EnabledServices) == 0 {
 		o.EnabledServices = []string{"services", "projects", "hypervisors", "flavors", "networks", "volumes"}
