@@ -1,4 +1,4 @@
-# VMware vROps Input Plugin
+# VMware vROps(vRealize Operations) Input Plugin
 
 The VMware vROps plugin uses the vROps API to gather metrics.
 
@@ -8,7 +8,7 @@ The VMware vROps plugin uses the vROps API to gather metrics.
 ## Configuration
 
 ```toml @sample.conf
-# Collects performance metrics from vROps(vRealize Operations Manager) services
+# Collects performance metrics from vROps(vRealize Operations) services
 [[inputs.vrops]]
   ## List of vROps URL to be monitored. These three lines must be uncommented
   ## and edited for the plugin to work.
@@ -265,6 +265,10 @@ additional details.
   - diskspace_capacityRemaining
   - diskspace_recommendedSize
   - diskspace_timeRemaining
+
+For more information about the metrics, refer to the [documentation][vrops-info].
+
+[vrops-info]: https://seversky.atlassian.net/wiki/spaces/CSHD/pages/2069102615/vROps
 
 ## Example Output
 
