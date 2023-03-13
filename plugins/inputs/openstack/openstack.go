@@ -93,6 +93,9 @@ type OpenStack struct {
 	diag                 map[string]interface{}
 	openstackProjects    map[string]projects.Project
 	openstackServices    map[string]services.Service
+
+	// Locally condition
+	isGather bool
 }
 
 // containsService indicates whether a particular service is enabled
@@ -121,6 +124,18 @@ func (*OpenStack) SampleConfig() string {
 
 // Init : initialize performs any necessary initialization functions
 func (o *OpenStack) Init() error {
+	err := o.initOSP()
+	if err != nil {
+		o.Log.Error(err)
+		o.isGather = false
+	} else {
+		o.isGather = true
+	}
+	
+	return nil
+}
+
+func (o *OpenStack) initOSP() error {
 	if len(o.EnabledServices) == 0 {
 		o.EnabledServices = []string{"services", "projects", "hypervisors", "flavors", "networks", "volumes"}
 	}
@@ -201,6 +216,10 @@ func (o *OpenStack) Init() error {
 // Gather gathers resources from the OpenStack API and accumulates metrics.  This
 // implements the Input interface.
 func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
+	if !o.isGather {
+		return fmt.Errorf("Unable to gather OpenStack metrics because the initialization of it's plugin is failed")
+	}
+
 	if !o.AllTenants {
 		page, err := projects.List(o.identity, &projects.ListOpts{}).AllPages()
 		if err != nil {
