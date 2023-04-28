@@ -95,16 +95,16 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   # [inputs.vrops.paas_project_property_conditions]
   #   conjunctionOperator="AND"
 
-  ## key*	string
+  ## key* string
   ## The name of the StatKey or Property to which the condition applies
   ##
-  ## operator*	string
+  ## operator* string
   ## Comparison operator to use.
   ## Default value is EXISTS, i.e. checks the existence of stat or property.
   ## Enum:
   ## [ EQ, NOT_EQ, LIKE, LT, GT, LT_EQ, GT_EQ, IN, NOT_IN, EXISTS, CONTAINS, STARTS_WITH, ENDS_WITH, NOT_STARTS_WITH, NOT_ENDS_WITH, NOT_CONTAINS, REGEX, NOT_REGEX,   ## NOT_EXISTS, EMPTY, NOT_EMPTY ]
   ##
-  ## stringValue	string
+  ## stringValue string
   ## String value to which we need to compare to
   #   [[inputs.vrops.paas_project_property_conditions.conditions]]
   #     key = "config|name"
@@ -119,16 +119,16 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   # [inputs.vrops.paas_vm_property_conditions]
   #   conjunctionOperator="AND"
 
-  ## key*	string
+  ## key* string
   ## The name of the StatKey or Property to which the condition applies
   ##
-  ## operator*	string
+  ## operator* string
   ## Comparison operator to use.
   ## Default value is EXISTS, i.e. checks the existence of stat or property.
   ## Enum:
   ## [ EQ, NOT_EQ, LIKE, LT, GT, LT_EQ, GT_EQ, IN, NOT_IN, EXISTS, CONTAINS, STARTS_WITH, ENDS_WITH, NOT_STARTS_WITH, NOT_ENDS_WITH, NOT_CONTAINS, REGEX, NOT_REGEX,   ## NOT_EXISTS, EMPTY, NOT_EMPTY ]
   ##
-  ## stringValue	string
+  ## stringValue string
   ## String value to which we need to compare to
   #   [[inputs.vrops.paas_vm_property_conditions.conditions]]
   #     key = "config|name"
@@ -140,12 +140,12 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   metric_separator = "_"
   templates = [
       "measurement.field*",
-		  "cloudzones.* measurement.cloudzone.cloudzone.field*",
-		  "net.*.* measurement.net.field*",
-		  "virtualDisk.*.* measurement.net.field*",
-		  "virtualDisk.*.*.* measurement.net.net.field*",
-		  "guestfilesystem.*.* measurement.device.field*",
-		  "guestfilesystem.*.*.* measurement.device.device.field*"
+      "cloudzones.* measurement.cloudzone.cloudzone.field*",
+      "net.*.* measurement.net.field*",
+      "virtualDisk.*.* measurement.net.field*",
+      "virtualDisk.*.*.* measurement.net.net.field*",
+      "guestfilesystem.*.* measurement.device.field*",
+      "guestfilesystem.*.*.* measurement.device.device.field*"
   ]
 
   ## Amount of time allowed to complete the HTTP(s) request.
