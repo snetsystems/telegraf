@@ -18,10 +18,10 @@ var (
 )
 
 var (
-	paasProjectResourceKind       = "ResourcePool"
-	paasVMResourceKind            = "VirtualMachine"
-	paasProjectPropertyConditions = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "CONTAINS", "stringValue": "pjp"}}}
-	paasVMPropertyConditions      = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "NOT_CONTAINS", "stringValue": "-control-plane-"}}}
+	tanzuProjectResourceKind       = "ResourcePool"
+	tanzuVMResourceKind            = "VirtualMachine"
+	tanzuProjectPropertyConditions = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "CONTAINS", "stringValue": "pjp"}}}
+	tanzuVMPropertyConditions      = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "NOT_CONTAINS", "stringValue": "-control-plane-"}}}
 )
 
 var (
@@ -115,7 +115,7 @@ var (
 )
 
 var (
-	paasVMStatKey = [...]string{"sys|osUptime_latest",
+	tanzuVMStatKey = [...]string{"sys|osUptime_latest",
 		"sys|poweredOn",
 		"cpu|usage_average",
 		"cpu|workload",

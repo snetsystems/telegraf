@@ -4,8 +4,8 @@ The VMware vROps plugin uses the vROps API to gather metrics.
 
 - Projects
 - VMs
-- PaaS Projects
-- PaaS VMs
+- Tanzu Projects
+- Tanzu VMs
 
 ## Configuration
 
@@ -19,8 +19,8 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   password = "vrops"
 
   ## Available services are:
-  ## "projects", "vms", "paasProjects", "paasVMs"
-  enabled_services = ["projects", "vms", "paasProjects", "paasVMs"]
+  ## "projects", "vms", "tanzuProjects", "tanzuVMs"
+  enabled_services = ["projects", "vms", "tanzuProjects", "tanzuVMs"]
 
   ## Projects
   ## Typical Project Stat metrics (if omitted or empty, all metrics are collected)
@@ -51,13 +51,13 @@ The VMware vROps plugin uses the vROps API to gather metrics.
     "virtualDisk:Aggregate of all instances|totalWriteLatency_average",
     ]
 
-  ## PaaS Projects
-  ## Typical PaaS Project Stat metrics (if omitted or empty, all metrics are collected)
-  paas_project_stat_key = []
+  ## Tanzu Projects
+  ## Typical Tanzu Project Stat metrics (if omitted or empty, all metrics are collected)
+  tanzu_project_stat_key = []
 
-  ## PaaS VMs
-  ## Typical PaaS VMs Stat metrics (if omitted or empty, all metrics are collected)
-  paas_vm_stat_key = ["sys|poweredOn",
+  ## Tanzu VMs
+  ## Typical Tanzu VMs Stat metrics (if omitted or empty, all metrics are collected)
+  tanzu_vm_stat_key = ["sys|poweredOn",
     "cpu|usage_average",
     "cpu|corecount_provisioned",
     "config|hardware|num_Cpu",
@@ -81,18 +81,18 @@ The VMware vROps plugin uses the vROps API to gather metrics.
     "virtualDisk:Aggregate of all instances|totalWriteLatency_average",
     ]
 
-  ## PaaS Project - Resource Kind keys
-  # paas_project_resource_kind = "ResourcePool"
+  ## Tanzu Project - Resource Kind keys
+  # tanzu_project_resource_kind = "ResourcePool"
 
-  ## PaaS VM - Resource Kind keys
-  # paas_vm_resource_kind = "VirtualMachine"
+  ## Tanzu VM - Resource Kind keys
+  # tanzu_vm_resource_kind = "VirtualMachine"
 
-  ## PaaS Project Filter
-  ## Object used to lookup PaaS Project with various filtering criteria
+  ## Tanzu Project Filter
+  ## Object used to lookup Tanzu Project with various filtering criteria
   ## Indicates the conjunction of the filtering criteria
   ## Either all of the filtering criteria apply together (AND operation) or any of the filtering criteria could be applied (OR operation)
   ## Defaults to OR.
-  # [inputs.vrops.paas_project_property_conditions]
+  # [inputs.vrops.tanzu_project_property_conditions]
   #   conjunctionOperator="AND"
 
   ## key* string
@@ -106,17 +106,17 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   ##
   ## stringValue string
   ## String value to which we need to compare to
-  #   [[inputs.vrops.paas_project_property_conditions.conditions]]
+  #   [[inputs.vrops.tanzu_project_property_conditions.conditions]]
   #     key = "config|name"
   #     operator = "CONTAINS"
   #     stringValue = "pjp"
 
-  ## PaaS VM Filter
-  ## Object used to lookup PaaS VM with various filtering criteria
+  ## Tanzu VM Filter
+  ## Object used to lookup Tanzu VM with various filtering criteria
   ## Indicates the conjunction of the filtering criteria
   ## Either all of the filtering criteria apply together (AND operation) or any of the filtering criteria could be applied (OR operation)
   ## Defaults to OR.
-  # [inputs.vrops.paas_vm_property_conditions]
+  # [inputs.vrops.tanzu_vm_property_conditions]
   #   conjunctionOperator="AND"
 
   ## key* string
@@ -130,7 +130,7 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   ##
   ## stringValue string
   ## String value to which we need to compare to
-  #   [[inputs.vrops.paas_vm_property_conditions.conditions]]
+  #   [[inputs.vrops.tanzu_vm_property_conditions.conditions]]
   #     key = "config|name"
   #     operator = "NOT_CONTAINS"
   #     stringValue = "-control-plane-"
@@ -351,13 +351,13 @@ additional details.
   - diskspace_capacityRemaining
   - diskspace_recommendedSize
   - diskspace_timeRemaining
-- vrops_paas_project_badge
+- vrops_tanzu_project_badge
   - compliance
   - efficiency
   - health
   - risk
   - workload
-- vrops_paas_project_cpu
+- vrops_tanzu_project_cpu
   - capacity_contentionPct
   - demandmhz
   - dynamic_entitlement
@@ -366,7 +366,7 @@ additional details.
   - reservation_used
   - usagemhz_average
   - workload
-- vrops_paas_project_mem
+- vrops_tanzu_project_mem
   - active_average
   - consumed_average
   - dynamic_entitlement
@@ -383,7 +383,7 @@ additional details.
   - swapoutRate_average
   - usage_average
   - workload
-- vrops_paas_project_onlinecapacityanalytics
+- vrops_tanzu_project_onlinecapacityanalytics
   - capacityRemainingPercentage
   - cpu_capacityRemaining
   - cpu_recommendedSize
@@ -392,11 +392,11 @@ additional details.
   - mem_recommendedSize
   - mem_timeRemaining
   - timeRemaining
-- vrops_paas_project_summary
+- vrops_tanzu_project_summary
   - number_running_vms
   - number_vm_templates
   - total_number_vms
-- vrops_paas_project_systemattributes
+- vrops_tanzu_project_systemattributes
   - alert_count_critical
   - alert_count_immediate
   - alert_count_info
@@ -408,16 +408,16 @@ additional details.
   - self_alert_count
   - total_alarms
   - total_alert_count
-- vrops_paas_vm_badge
+- vrops_tanzu_vm_badge
   - compliance
   - efficiency
   - health
   - risk
   - workload
-- vrops_paas_vm_config
+- vrops_tanzu_vm_config
   - hardware_disk_Space
   - hardware_num_Cpu
-- vrops_paas_vm_cpu
+- vrops_tanzu_vm_cpu
   - capacity_contentionPct
   - corecount_provisioned
   - costopPct
@@ -437,7 +437,7 @@ additional details.
   - vcpu_usage_disparity
   - vm_capacity_provisioned
   - workload
-- vrops_paas_vm_diskspace
+- vrops_tanzu_vm_diskspace
   - perDsUsed
   - activeNotShared
   - notshared
@@ -446,9 +446,9 @@ additional details.
   - snapshot_used
   - used
   - workload
-- vrops_paas_vm_diskspace-total
+- vrops_tanzu_vm_diskspace-total
   - workload
-- vrops_paas_vm_guest
+- vrops_tanzu_vm_guest
   - contextSwapRate_latest
   - cpu_queue
   - disk_queue
@@ -461,14 +461,14 @@ additional details.
   - swap_spaceRemaining_latest
   - tools_running_status
   - used_memory
-- vrops_paas_vm_guestfilesystem
+- vrops_tanzu_vm_guestfilesystem
   - capacity
   - percentage
   - usage
   - capacity_total
   - percentage_total
   - usage_total
-- vrops_paas_vm_mem
+- vrops_tanzu_vm_mem
   - balloonPct
   - compressed_average
   - consumed_average
@@ -490,9 +490,9 @@ additional details.
   - usage_average
   - vmMemoryDemand
   - workload
-- vrops_paas_vm_mem-host
+- vrops_tanzu_vm_mem-host
   - workload
-- vrops_paas_vm_net
+- vrops_tanzu_vm_net
   - droppedPct
   - packetsRxPerSec
   - packetsTxPerSec
@@ -505,7 +505,7 @@ additional details.
   - received_average
   - transmitted_average
   - usage_average
-- vrops_paas_vm_onlinecapacityanalytics
+- vrops_tanzu_vm_onlinecapacityanalytics
   - capacityRemainingPercentage
   - cpu_capacityRemaining
   - cpu_recommendedSize
@@ -517,17 +517,17 @@ additional details.
   - mem_recommendedSize
   - mem_timeRemaining
   - timeRemaining
-- vrops_paas_vm_performance
+- vrops_tanzu_vm_performance
   - number_of_kpis_breached
-- vrops_paas_vm_power
+- vrops_tanzu_vm_power
   - energy_summation_sum
-- vrops_paas_vm_rescpu
+- vrops_tanzu_vm_rescpu
   - actav1_latest
   - actav5_latest
-- vrops_paas_vm_storage
+- vrops_tanzu_vm_storage
   - totalReadLatency_average
   - totalWriteLatency_average
-- vrops_paas_vm_summary
+- vrops_tanzu_vm_summary
   - idle
   - oversized
   - oversized_memory
@@ -538,10 +538,10 @@ additional details.
   - undersized
   - undersized_memory
   - undersized_vcpus
-- vrops_paas_vm_sys
+- vrops_tanzu_vm_sys
   - osUptime_latest
   - poweredOn
-- vrops_paas_vm_systemattributes
+- vrops_tanzu_vm_systemattributes
   - alert_count_critical
   - alert_count_immediate
   - alert_count_info
@@ -553,7 +553,7 @@ additional details.
   - self_alert_count
   - total_alarms
   - total_alert_count
-- vrops_paas_vm_virtualdisk
+- vrops_tanzu_vm_virtualdisk
   - commandsAveraged_average
   - numberReadAveraged_average
   - numberWriteAveraged_average
@@ -662,111 +662,111 @@ vrops_vm_net,deployment_id=27e7d17f-2343-4c9e-9d13-e4e4e1ebb616,deployment_name=
 vrops_vm_net,deployment_id=27e7d17f-2343-4c9e-9d13-e4e4e1ebb616,deployment_name=kor-uni-03,host=S2100113,net=vmnic1,tenant_id=1a099fbd-379e-4153-83bf-19739de99b69,tenant_name=KOR-RC,vm_id=f2ecbace-9f7b-4a73-a97a-e512c3fe4040,vm_name=korlab.121 transmitted_average=0 1678077893000000000
 vrops_vm_net,deployment_id=27e7d17f-2343-4c9e-9d13-e4e4e1ebb616,deployment_name=kor-uni-03,host=S2100113,net=vmnic4,tenant_id=1a099fbd-379e-4153-83bf-19739de99b69,tenant_name=KOR-RC,vm_id=f2ecbace-9f7b-4a73-a97a-e512c3fe4040,vm_name=korlab.121 received_average=0 1678077893000000000
 vrops_vm_net,deployment_id=27e7d17f-2343-4c9e-9d13-e4e4e1ebb616,deployment_name=kor-uni-03,host=S2100113,net=vusb0,tenant_id=1a099fbd-379e-4153-83bf-19739de99b69,tenant_name=KOR-RC,vm_id=f2ecbace-9f7b-4a73-a97a-e512c3fe4040,vm_name=korlab.121 transmitted_average=0 1678077893000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_warning=0 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 all_metrics=48 1682408481000000000
-vrops_paas_project_summary,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 total_number_vms=3 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 cpu_capacityRemaining=488365.2701706162 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 guest_usage=20951292.8 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 swapinRate_average=0 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 usagemhz_average=2953.8 1682408481000000000
-vrops_paas_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 workload=38.253067070874735 1682408481000000000
-vrops_paas_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_f61a7d58-8309-4921-810b-e13a8a002b5a=254 1682408481000000000
-vrops_paas_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 risk=0 1682408481000000000
-vrops_paas_project_summary,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 number_running_vms=3 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 reservation_used=0 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 total_alert_count=0 1682408481000000000
-vrops_paas_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 compliance=-1 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_info=0 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 capacityRemainingPercentage=47.94168158167578 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 consumed_average=20951292.8 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 timeRemaining=366 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 workload=0.6148372714029757 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 active_average=7253343.466666667 1682408481000000000
-vrops_paas_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 health=100 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 health=100 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 usage_average=34.58663686116537 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 guest_demand=7978677.813333333 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_immediate=0 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 guest_provisioned=20971520 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 overhead_average=172807.46666666667 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 reservation_used=283648 1682408481000000000
-vrops_paas_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_d2ef43c1-a365-406a-b871-54e9566916e7=8 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 child_all_metrics=3768 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 effective_limit=497088 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 mem_recommendedSize=10858124.118365692 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 granted_average=20971520 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 mem_timeRemaining=366 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 demandmhz=3034.6666666666665 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 mem_capacityRemaining=9999491.817503063 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 workload=38.253067070874735 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 dynamic_entitlement=20857615.935868755 1682408481000000000
-vrops_paas_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_c98f08a0-c4af-4301-a2f4-6e97b327831d=16 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 swapoutRate_average=0 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_critical=0 1682408481000000000
-vrops_paas_project_summary,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 number_vm_templates=0 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 shared_average=20867.2 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 cpu_timeRemaining=366 1682408481000000000
-vrops_paas_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 efficiency=100 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 capacity_contentionPct=0.03773333333333333 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 total_alarms=16 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 self_alert_count=0 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 estimated_entitlement=493572.3333333333 1682408481000000000
-vrops_paas_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 availability=1 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 effective_limit=3910576128 1682408481000000000
-vrops_paas_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_fa9d590d-35ce-4706-8384-d62927554b88=2 1682408481000000000
-vrops_paas_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 host_contentionPct=0 1682408481000000000
-vrops_paas_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 cpu_recommendedSize=246786.16666666663 1682408481000000000
-vrops_paas_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 dynamic_entitlement=27930 1682408481000000000
-vrops_paas_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn totalReadLatency_average=0 1682408481000000000
-vrops_paas_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn peak_vDisk_iops=60.266666666666666 1682408481000000000
-vrops_paas_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn capacity_total=689.2849884033203 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_2,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=0 1682408481000000000
-vrops_paas_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn used=126.27726807352155 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_2,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=0 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=0 1682408481000000000
-vrops_paas_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn hardware_num_Cpu=4 1682408481000000000
-vrops_paas_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_average=8.253333333333334 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=435.06666666666666 1682408481000000000
-vrops_paas_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn provisionedSpace=412.35546875 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=904.2666666666667 1682408481000000000
-vrops_paas_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn corecount_provisioned=4 1682408481000000000
-vrops_paas_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn percentage_total=43.00272102919221 1682408481000000000
-vrops_paas_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn totalLatency=0.2117994100294985 1682408481000000000
-vrops_paas_vm_sys,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn poweredOn=1 1682408481000000000
-vrops_paas_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=435.06666666666666 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=15.466666666666667 1682408481000000000
-vrops_paas_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn hardware_disk_Space=202 1682408481000000000
-vrops_paas_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn transmitted_average=27.533333333333335 1682408481000000000
-vrops_paas_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_average=42.587264378865555 1682408481000000000
-vrops_paas_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_average=118 1682408481000000000
-vrops_paas_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn totalWriteLatency_average=0.26666666666666666 1682408481000000000
-vrops_paas_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=920 1682408481000000000
-vrops_paas_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_total=296.4113006591797 1682408481000000000
-vrops_paas_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn guest_provisioned=8388608 1682408481000000000
-vrops_paas_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn received_average=90 1682408481000000000
-vrops_paas_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 totalReadLatency_average=0 1682408481000000000
-vrops_paas_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 peak_vDisk_iops=62.93333333333334 1682408481000000000
-vrops_paas_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 capacity_total=298.03282928466797 1682408481000000000
-vrops_paas_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 used=96.62474834360182 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 read_average=0 1682408481000000000
-vrops_paas_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 hardware_num_Cpu=4 1682408481000000000
-vrops_paas_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_average=7.159333333333333 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 read_average=9.666666666666666 1682408481000000000
-vrops_paas_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 provisionedSpace=112.33203125 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 write_average=1011.9333333333333 1682408481000000000
-vrops_paas_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 corecount_provisioned=4 1682408481000000000
-vrops_paas_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 percentage_total=68.52583490493068 1682408481000000000
-vrops_paas_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 totalLatency=0 1682408481000000000
-vrops_paas_vm_sys,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 poweredOn=1 1682408481000000000
-vrops_paas_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 read_average=9.666666666666666 1682408481000000000
-vrops_paas_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 write_average=0 1682408481000000000
-vrops_paas_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 hardware_disk_Space=52 1682408481000000000
-vrops_paas_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 transmitted_average=38 1682408481000000000
-vrops_paas_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_average=30.13167381286621 1682408481000000000
-vrops_paas_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_average=70.93333333333334 1682408481000000000
-vrops_paas_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 totalWriteLatency_average=0 1682408481000000000
-vrops_paas_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 write_average=1011.9333333333333 1682408481000000000
-vrops_paas_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_total=204.22948455810547 1682408481000000000
-vrops_paas_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 guest_provisioned=8388608 1682408481000000000
-vrops_paas_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 received_average=32.46666666666667 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_warning=0 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 all_metrics=48 1682408481000000000
+vrops_tanzu_project_summary,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 total_number_vms=3 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 cpu_capacityRemaining=488365.2701706162 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 guest_usage=20951292.8 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 swapinRate_average=0 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 usagemhz_average=2953.8 1682408481000000000
+vrops_tanzu_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 workload=38.253067070874735 1682408481000000000
+vrops_tanzu_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_f61a7d58-8309-4921-810b-e13a8a002b5a=254 1682408481000000000
+vrops_tanzu_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 risk=0 1682408481000000000
+vrops_tanzu_project_summary,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 number_running_vms=3 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 reservation_used=0 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 total_alert_count=0 1682408481000000000
+vrops_tanzu_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 compliance=-1 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_info=0 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 capacityRemainingPercentage=47.94168158167578 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 consumed_average=20951292.8 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 timeRemaining=366 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 workload=0.6148372714029757 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 active_average=7253343.466666667 1682408481000000000
+vrops_tanzu_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 health=100 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 health=100 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 usage_average=34.58663686116537 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 guest_demand=7978677.813333333 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_immediate=0 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 guest_provisioned=20971520 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 overhead_average=172807.46666666667 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 reservation_used=283648 1682408481000000000
+vrops_tanzu_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_d2ef43c1-a365-406a-b871-54e9566916e7=8 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 child_all_metrics=3768 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 effective_limit=497088 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 mem_recommendedSize=10858124.118365692 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 granted_average=20971520 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 mem_timeRemaining=366 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 demandmhz=3034.6666666666665 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 mem_capacityRemaining=9999491.817503063 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 workload=38.253067070874735 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 dynamic_entitlement=20857615.935868755 1682408481000000000
+vrops_tanzu_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_c98f08a0-c4af-4301-a2f4-6e97b327831d=16 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 swapoutRate_average=0 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 alert_count_critical=0 1682408481000000000
+vrops_tanzu_project_summary,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 number_vm_templates=0 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 shared_average=20867.2 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 cpu_timeRemaining=366 1682408481000000000
+vrops_tanzu_project_badge,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 efficiency=100 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 capacity_contentionPct=0.03773333333333333 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 total_alarms=16 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 self_alert_count=0 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 estimated_entitlement=493572.3333333333 1682408481000000000
+vrops_tanzu_project_systemattributes,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 availability=1 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 effective_limit=3910576128 1682408481000000000
+vrops_tanzu_project_supermetric,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 sm_fa9d590d-35ce-4706-8384-d62927554b88=2 1682408481000000000
+vrops_tanzu_project_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 host_contentionPct=0 1682408481000000000
+vrops_tanzu_project_onlinecapacityanalytics,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 cpu_recommendedSize=246786.16666666663 1682408481000000000
+vrops_tanzu_project_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001 dynamic_entitlement=27930 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn totalReadLatency_average=0 1682408481000000000
+vrops_tanzu_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn peak_vDisk_iops=60.266666666666666 1682408481000000000
+vrops_tanzu_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn capacity_total=689.2849884033203 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_2,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=0 1682408481000000000
+vrops_tanzu_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn used=126.27726807352155 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_2,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=0 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=0 1682408481000000000
+vrops_tanzu_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn hardware_num_Cpu=4 1682408481000000000
+vrops_tanzu_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_average=8.253333333333334 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=435.06666666666666 1682408481000000000
+vrops_tanzu_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn provisionedSpace=412.35546875 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=904.2666666666667 1682408481000000000
+vrops_tanzu_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn corecount_provisioned=4 1682408481000000000
+vrops_tanzu_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn percentage_total=43.00272102919221 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn totalLatency=0.2117994100294985 1682408481000000000
+vrops_tanzu_vm_sys,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn poweredOn=1 1682408481000000000
+vrops_tanzu_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn read_average=435.06666666666666 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=15.466666666666667 1682408481000000000
+vrops_tanzu_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn hardware_disk_Space=202 1682408481000000000
+vrops_tanzu_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn transmitted_average=27.533333333333335 1682408481000000000
+vrops_tanzu_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_average=42.587264378865555 1682408481000000000
+vrops_tanzu_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_average=118 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn totalWriteLatency_average=0.26666666666666666 1682408481000000000
+vrops_tanzu_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn write_average=920 1682408481000000000
+vrops_tanzu_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn usage_total=296.4113006591797 1682408481000000000
+vrops_tanzu_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn guest_provisioned=8388608 1682408481000000000
+vrops_tanzu_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=ad6f5c67-6557-4cc1-9d23-fe386fccbf90,vm_name=pjp-dev001-md-0-5bb975b56c-v7bbn received_average=90 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 totalReadLatency_average=0 1682408481000000000
+vrops_tanzu_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 peak_vDisk_iops=62.93333333333334 1682408481000000000
+vrops_tanzu_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 capacity_total=298.03282928466797 1682408481000000000
+vrops_tanzu_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 used=96.62474834360182 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 read_average=0 1682408481000000000
+vrops_tanzu_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 hardware_num_Cpu=4 1682408481000000000
+vrops_tanzu_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_average=7.159333333333333 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 read_average=9.666666666666666 1682408481000000000
+vrops_tanzu_vm_diskspace,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 provisionedSpace=112.33203125 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_0,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 write_average=1011.9333333333333 1682408481000000000
+vrops_tanzu_vm_cpu,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 corecount_provisioned=4 1682408481000000000
+vrops_tanzu_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 percentage_total=68.52583490493068 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 totalLatency=0 1682408481000000000
+vrops_tanzu_vm_sys,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 poweredOn=1 1682408481000000000
+vrops_tanzu_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 read_average=9.666666666666666 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=scsi0_1,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 write_average=0 1682408481000000000
+vrops_tanzu_vm_config,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 hardware_disk_Space=52 1682408481000000000
+vrops_tanzu_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 transmitted_average=38 1682408481000000000
+vrops_tanzu_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_average=30.13167381286621 1682408481000000000
+vrops_tanzu_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_average=70.93333333333334 1682408481000000000
+vrops_tanzu_vm_virtualdisk,device=Aggregateofallinstances,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 totalWriteLatency_average=0 1682408481000000000
+vrops_tanzu_vm_virtualdisk,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 write_average=1011.9333333333333 1682408481000000000
+vrops_tanzu_vm_guestfilesystem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 usage_total=204.22948455810547 1682408481000000000
+vrops_tanzu_vm_mem,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 guest_provisioned=8388608 1682408481000000000
+vrops_tanzu_vm_net,host=S2100113,tenant_id=e10d6ccd-6b47-4811-be59-924f9872cf15,tenant_name=PJP-DEV001,vm_id=061fc8b8-e2d6-40cc-834b-d0e3fd4994a0,vm_name=pjp-dev001-md-0-5bb975b56c-fqlh7 received_average=32.46666666666667 1682408481000000000
 ```

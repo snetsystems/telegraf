@@ -27,18 +27,18 @@ var sampleConfig string
 
 // vROps is the main structure associated with a collection instance.
 type vROps struct {
-	URL                           string                 `toml:"url"`
-	Username                      string                 `toml:"username"`
-	Password                      string                 `toml:"password"`
-	EnabledServices               []string               `toml:"enabled_services"`
-	ProjectStatKey                []string               `toml:"project_stat_key"`
-	VMStatKey                     []string               `toml:"vm_stat_key"`
-	PaaSProjectStatKey            []string               `toml:"paas_project_stat_key"`
-	PaaSVMStatKey                 []string               `toml:"paas_vm_stat_key"`
-	PaasProjectResourceKind       string                 `toml:"paas_project_resource_kind"`
-	PaasProjectPropertyConditions map[string]interface{} `toml:"paas_project_property_conditions"`
-	PaasVMResourceKind            string                 `toml:"paas_vm_resource_kind"`
-	PaasVMPropertyConditions      map[string]interface{} `toml:"paas_vm_property_conditions"`
+	URL                            string                 `toml:"url"`
+	Username                       string                 `toml:"username"`
+	Password                       string                 `toml:"password"`
+	EnabledServices                []string               `toml:"enabled_services"`
+	ProjectStatKey                 []string               `toml:"project_stat_key"`
+	VMStatKey                      []string               `toml:"vm_stat_key"`
+	TanzuProjectStatKey            []string               `toml:"tanzu_project_stat_key"`
+	TanzuVMStatKey                 []string               `toml:"tanzu_vm_stat_key"`
+	TanzuProjectResourceKind       string                 `toml:"tanzu_project_resource_kind"`
+	TanzuProjectPropertyConditions map[string]interface{} `toml:"tanzu_project_property_conditions"`
+	TanzuVMResourceKind            string                 `toml:"tanzu_vm_resource_kind"`
+	TanzuVMPropertyConditions      map[string]interface{} `toml:"tanzu_vm_property_conditions"`
 	// bucket -> influx templates
 	Templates []string
 	// MetricSeparator is the separator between parts of the metric name.
@@ -90,10 +90,10 @@ func (o *vROps) Gather(acc telegraf.Accumulator) error {
 	// Gather resources.  Note service harvesting must come first as the other
 	// gatherers are dependant on this information.
 	gatherers := map[string]func(telegraf.Accumulator) error{
-		"projects":     o.gatherProject,
-		"vms":          o.gatherVMs,
-		"paasProjects": o.gatherPaaSProject,
-		"paasVMs":      o.gatherPaaSVMs,
+		"projects":      o.gatherProject,
+		"vms":           o.gatherVMs,
+		"tanzuProjects": o.gatherTanzuProject,
+		"tanzuVMs":      o.gatherTanzuVMs,
 	}
 
 	callDuration := map[string]interface{}{}
@@ -338,9 +338,9 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 	}
 }
 
-func (o *vROps) gatherPaaSProject(acc telegraf.Accumulator) error {
+func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 	for {
-		projects, err := o.getPaaSProjects()
+		projects, err := o.getTanzuProjects()
 		if err != nil {
 			return err
 		}
@@ -420,7 +420,7 @@ func (o *vROps) gatherPaaSProject(acc telegraf.Accumulator) error {
 					fields[field] = stat.Values[0]
 				}
 
-				acc.AddFields(strings.Join([]string{"vrops_paas_project", measurement}, "_"), fields, tags)
+				acc.AddFields(strings.Join([]string{"vrops_tanzu_project", measurement}, "_"), fields, tags)
 
 			}
 		}
@@ -429,14 +429,14 @@ func (o *vROps) gatherPaaSProject(acc telegraf.Accumulator) error {
 	}
 }
 
-func (o *vROps) gatherPaaSVMs(acc telegraf.Accumulator) error {
+func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 	for {
-		projects, err := o.getPaaSProjects()
+		projects, err := o.getTanzuProjects()
 		if err != nil {
 			return err
 		}
 
-		vms, err := o.getPaaSVMs(projects)
+		vms, err := o.getTanzuVMs(projects)
 		if err != nil {
 			return err
 		}
@@ -447,10 +447,10 @@ func (o *vROps) gatherPaaSVMs(acc telegraf.Accumulator) error {
 		}
 
 		var statKey []string
-		if o.PaaSVMStatKey != nil {
-			statKey = o.PaaSVMStatKey
+		if o.TanzuVMStatKey != nil {
+			statKey = o.TanzuVMStatKey
 		} else {
-			statKey = paasVMStatKey[:]
+			statKey = tanzuVMStatKey[:]
 		}
 
 		statReqbody := &statBody{
@@ -525,7 +525,7 @@ func (o *vROps) gatherPaaSVMs(acc telegraf.Accumulator) error {
 					fields[field] = stat.Values[0]
 				}
 
-				acc.AddFields(strings.Join([]string{"vrops_paas_vm", measurement}, "_"), fields, tags)
+				acc.AddFields(strings.Join([]string{"vrops_tanzu_vm", measurement}, "_"), fields, tags)
 
 			}
 		}
@@ -744,7 +744,7 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 	}
 }
 
-func (o *vROps) getPaaSProjects() (map[string]string, error) {
+func (o *vROps) getTanzuProjects() (map[string]string, error) {
 	for {
 		resourceURL, err := url.Parse(o.URL + apiURL + resourceInfo)
 		if err != nil {
@@ -752,17 +752,17 @@ func (o *vROps) getPaaSProjects() (map[string]string, error) {
 		}
 
 		var resourceKind string
-		if o.PaasProjectResourceKind != "" {
-			resourceKind = o.PaasProjectResourceKind
+		if o.TanzuProjectResourceKind != "" {
+			resourceKind = o.TanzuProjectResourceKind
 		} else {
-			resourceKind = paasProjectResourceKind
+			resourceKind = tanzuProjectResourceKind
 		}
 
 		propertyConditions := make(map[string]interface{})
-		if o.PaasProjectPropertyConditions != nil {
-			propertyConditions = o.PaasProjectPropertyConditions
+		if o.TanzuProjectPropertyConditions != nil {
+			propertyConditions = o.TanzuProjectPropertyConditions
 		} else {
-			propertyConditions = paasProjectPropertyConditions
+			propertyConditions = tanzuProjectPropertyConditions
 		}
 
 		requestbody := &resourceBody{
@@ -819,20 +819,20 @@ func (o *vROps) getPaaSProjects() (map[string]string, error) {
 	}
 }
 
-func (o *vROps) getPaaSVMs(projects map[string]string) (map[string]map[string]string, error) {
+func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]string, error) {
 	for {
 		var resourceKind string
-		if o.PaasVMResourceKind != "" {
-			resourceKind = o.PaasVMResourceKind
+		if o.TanzuVMResourceKind != "" {
+			resourceKind = o.TanzuVMResourceKind
 		} else {
-			resourceKind = paasVMResourceKind
+			resourceKind = tanzuVMResourceKind
 		}
 
 		propertyConditions := make(map[string]interface{})
-		if o.PaasVMPropertyConditions != nil {
-			propertyConditions = o.PaasVMPropertyConditions
+		if o.TanzuVMPropertyConditions != nil {
+			propertyConditions = o.TanzuVMPropertyConditions
 		} else {
-			propertyConditions = paasVMPropertyConditions
+			propertyConditions = tanzuVMPropertyConditions
 		}
 
 		resourceQuery := &resourceBody{
