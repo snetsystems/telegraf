@@ -1,4 +1,3 @@
-//go:generate ../../../tools/readme_config_includer/generator
 // Package openstack implements an OpenStack input plugin for Telegraf
 //
 // The OpenStack input plug is a simple two phase metric collector.  In the first
@@ -7,6 +6,8 @@
 //
 // No aggregation is performed by the input plugin, instead queries to InfluxDB should
 // be used to gather global totals of things such as tag frequency.
+//
+//go:generate ../../../tools/readme_config_includer/generator
 package openstack
 
 import (
@@ -21,18 +22,22 @@ import (
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	volume_quotasets "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/quotasets"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/schedulerstats"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetenants"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/aggregates"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/diagnostics"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/hypervisors"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/quotasets"
+
 	nova_services "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/services"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/projects"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/services"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/agents"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/quotas"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
@@ -45,6 +50,7 @@ import (
 )
 
 // DO NOT REMOVE THE NEXT TWO LINES! This is required to embed the sampleConfig data.
+//
 //go:embed sample.conf
 var sampleConfig string
 
@@ -131,7 +137,7 @@ func (o *OpenStack) Init() error {
 	} else {
 		o.isGather = true
 	}
-	
+
 	return nil
 }
 
@@ -159,7 +165,7 @@ func (o *OpenStack) initOSP() error {
 		TenantName:       o.Project,
 		Username:         o.Username,
 		Password:         o.Password,
-		AllowReauth: 	  true,
+		AllowReauth:      true,
 	}
 	provider, err := openstack.NewClient(authOption.IdentityEndpoint)
 	if err != nil {
@@ -238,19 +244,22 @@ func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
 	// Gather resources.  Note service harvesting must come first as the other
 	// gatherers are dependant on this information.
 	gatherers := map[string]func(telegraf.Accumulator) error{
-		"projects":      o.gatherProjects,
-		"hypervisors":   o.gatherHypervisors,
-		"flavors":       o.gatherFlavors,
-		"servers":       o.gatherServers,
-		"volumes":       o.gatherVolumes,
-		"storage_pools": o.gatherStoragePools,
-		"subnets":       o.gatherSubnets,
-		"ports":         o.gatherPorts,
-		"networks":      o.gatherNetworks,
-		"aggregates":    o.gatherAggregates,
-		"nova_services": o.gatherNovaServices,
-		"agents":        o.gatherAgents,
-		"stacks":        o.gatherStacks,
+		"projects":       o.gatherProjects,
+		"hypervisors":    o.gatherHypervisors,
+		"flavors":        o.gatherFlavors,
+		"servers":        o.gatherServers,
+		"volumes":        o.gatherVolumes,
+		"storage_pools":  o.gatherStoragePools,
+		"subnets":        o.gatherSubnets,
+		"ports":          o.gatherPorts,
+		"networks":       o.gatherNetworks,
+		"aggregates":     o.gatherAggregates,
+		"nova_services":  o.gatherNovaServices,
+		"agents":         o.gatherAgents,
+		"stacks":         o.gatherStacks,
+		"compute_quotas": o.gatherComputeQuotas,
+		"network_quotas": o.gatherNetworkQuotas,
+		"volume_quotas":  o.gatherVolumeQuotas,
 	}
 
 	callDuration := map[string]interface{}{}
@@ -569,7 +578,6 @@ func (o *OpenStack) gatherProjects(acc telegraf.Accumulator) error {
 		tenantName = ""
 	} else {
 		tenantName = o.Project
-
 	}
 	page, err := projects.List(o.identity, &projects.ListOpts{Name: tenantName}).AllPages()
 	if err != nil {
@@ -802,6 +810,186 @@ func (o *OpenStack) gatherServers(acc telegraf.Accumulator) error {
 	return nil
 }
 
+// gatherComputeQuotas collects Compute Quotas from the OpenStack API.
+func (o *OpenStack) gatherComputeQuotas(acc telegraf.Accumulator) error {
+	var tenantName string
+	if o.AllTenants {
+		tenantName = ""
+	} else {
+		tenantName = o.Project
+	}
+
+	page, err := projects.List(o.identity, &projects.ListOpts{Name: tenantName}).AllPages()
+	if err != nil {
+		return fmt.Errorf("unable to list projects %v", err)
+	}
+
+	extractedProjects, err := projects.ExtractProjects(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract projects %v", err)
+	}
+	for _, project := range extractedProjects {
+		quotaset, err := quotasets.GetDetail(o.compute, project.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get compute quota for project(%v) %v", project.ID, err))
+			continue
+		}
+
+		tags := map[string]string{
+			"project":      project.ID,
+			"project_name": project.Name,
+		}
+		fields := map[string]interface{}{
+			"fixed_ips_in_use":                   quotaset.FixedIPs.InUse,
+			"floating_ips_in_use":                quotaset.FloatingIPs.InUse,
+			"injected_file_content_bytes_in_use": quotaset.InjectedFileContentBytes.InUse,
+			"injected_file_path_bytes_in_use":    quotaset.InjectedFilePathBytes.InUse,
+			"injected_files_in_use":              quotaset.InjectedFiles.InUse,
+			"key_pairs_in_use":                   quotaset.KeyPairs.InUse,
+			"metadata_items_in_use":              quotaset.MetadataItems.InUse,
+			"ram_in_use":                         quotaset.RAM.InUse,
+			"security_group_rules_in_use":        quotaset.SecurityGroupRules.InUse,
+			"security_groups_in_use":             quotaset.SecurityGroups.InUse,
+			"cores_in_use":                       quotaset.Cores.InUse,
+			"instances_in_use":                   quotaset.Instances.InUse,
+			"server_groups_in_use":               quotaset.ServerGroups.InUse,
+			"server_group_members_in_use":        quotaset.ServerGroupMembers.InUse,
+			"fixed_ips_limit":                    quotaset.FixedIPs.Limit,
+			"floating_ips_limit":                 quotaset.FloatingIPs.Limit,
+			"injected_file_content_bytes_limit":  quotaset.InjectedFileContentBytes.Limit,
+			"injected_file_path_bytes_limit":     quotaset.InjectedFilePathBytes.Limit,
+			"injected_files_limit":               quotaset.InjectedFiles.Limit,
+			"key_pairs_limit":                    quotaset.KeyPairs.Limit,
+			"metadata_items_limit":               quotaset.MetadataItems.Limit,
+			"ram_limit":                          quotaset.RAM.Limit,
+			"security_group_rules_limit":         quotaset.SecurityGroupRules.Limit,
+			"security_groups_limit":              quotaset.SecurityGroups.Limit,
+			"cores_limit":                        quotaset.Cores.Limit,
+			"instances_limit":                    quotaset.Instances.Limit,
+			"server_groups_limit":                quotaset.ServerGroups.Limit,
+			"server_group_members_limit":         quotaset.ServerGroupMembers.Limit,
+		}
+		acc.AddFields("openstack_compute_quota", fields, tags)
+	}
+
+	return nil
+}
+
+// gatherNetworkQuotas collects Network Quotas from the OpenStack API.
+func (o *OpenStack) gatherNetworkQuotas(acc telegraf.Accumulator) error {
+	var tenantName string
+	if o.AllTenants {
+		tenantName = ""
+	} else {
+		tenantName = o.Project
+	}
+
+	page, err := projects.List(o.identity, &projects.ListOpts{Name: tenantName}).AllPages()
+	if err != nil {
+		return fmt.Errorf("unable to list projects %v", err)
+	}
+
+	extractedProjects, err := projects.ExtractProjects(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract projects %v", err)
+	}
+	for _, project := range extractedProjects {
+		quota, err := quotas.GetDetail(o.network, project.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get network quota for project(%v) %v", project.ID, err))
+			continue
+		}
+
+		tags := map[string]string{
+			"project":      project.ID,
+			"project_name": project.Name,
+		}
+		fields := map[string]interface{}{
+			"floatingip_used":           quota.FloatingIP.Used,
+			"network_used":              quota.Network.Used,
+			"port_used":                 quota.Port.Used,
+			"rbac_policy_used":          quota.RBACPolicy.Used,
+			"router_used":               quota.Router.Used,
+			"security_group_used":       quota.SecurityGroup.Used,
+			"security_group_rule_used":  quota.SecurityGroupRule.Used,
+			"subnet_used":               quota.Subnet.Used,
+			"subnetpool_used":           quota.SubnetPool.Used,
+			"trunk_used":                quota.Trunk.Used,
+			"floatingip_limit":          quota.FloatingIP.Limit,
+			"network_limit":             quota.Network.Limit,
+			"port_limit":                quota.Port.Limit,
+			"rbac_policy_limit":         quota.RBACPolicy.Limit,
+			"router_limit":              quota.Router.Limit,
+			"security_group_limit":      quota.SecurityGroup.Limit,
+			"security_group_rule_limit": quota.SecurityGroupRule.Limit,
+			"subnet_limit":              quota.Subnet.Limit,
+			"subnetpool_limit":          quota.SubnetPool.Limit,
+			"trunk_limit":               quota.Trunk.Limit,
+		}
+		acc.AddFields("openstack_network_quota", fields, tags)
+	}
+
+	return nil
+}
+
+// gatherVolumeQuotas collects Volume Quotas from the OpenStack API.
+func (o *OpenStack) gatherVolumeQuotas(acc telegraf.Accumulator) error {
+	var tenantName string
+	if o.AllTenants {
+		tenantName = ""
+	} else {
+		tenantName = o.Project
+	}
+
+	page, err := projects.List(o.identity, &projects.ListOpts{Name: tenantName}).AllPages()
+	if err != nil {
+		return fmt.Errorf("unable to list projects %v", err)
+	}
+
+	extractedProjects, err := projects.ExtractProjects(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract projects %v", err)
+	}
+	for _, project := range extractedProjects {
+		quota, err := volume_quotasets.GetUsage(o.volume, project.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get volume quota for project(%v) %v", project.ID, err))
+			continue
+		}
+
+		tags := map[string]string{
+			"project":      project.ID,
+			"project_name": project.Name,
+		}
+		fields := map[string]interface{}{
+			"volumes_in_use":                 quota.Volumes.InUse,
+			"snapshots_in_use":               quota.Snapshots.InUse,
+			"gigabytes_in_use":               quota.Gigabytes.InUse,
+			"per_volume_gigabytes_in_use":    quota.PerVolumeGigabytes.InUse,
+			"backups_in_use":                 quota.Backups.InUse,
+			"backup_gigabytes_in_use":        quota.BackupGigabytes.InUse,
+			"groups_in_use":                  quota.Groups.InUse,
+			"volumes_allocated":              quota.Volumes.Allocated,
+			"snapshots_allocated":            quota.Snapshots.Allocated,
+			"gigabytes_allocated":            quota.Gigabytes.Allocated,
+			"per_volume_gigabytes_allocated": quota.PerVolumeGigabytes.Allocated,
+			"backups_allocated":              quota.Backups.Allocated,
+			"backup_gigabytes_allocated":     quota.BackupGigabytes.Allocated,
+			"groups_allocated":               quota.Groups.Allocated,
+			"volumes_limit":                  quota.Volumes.Limit,
+			"snapshots_limit":                quota.Snapshots.Limit,
+			"gigabytes_limit":                quota.Gigabytes.Limit,
+			"per_volume_gigabytes_limit":     quota.PerVolumeGigabytes.Limit,
+			"backups_limit":                  quota.Backups.Limit,
+			"backup_gigabytes_limit":         quota.BackupGigabytes.Limit,
+			"groups_limit":                   quota.Groups.Limit,
+		}
+		acc.AddFields("openstack_volume_quota", fields, tags)
+	}
+
+	return nil
+}
+
 // accumulateServices accumulates statistics of services.
 func (o *OpenStack) accumulateServices(acc telegraf.Accumulator) {
 	for _, service := range o.openstackServices {
@@ -890,10 +1078,11 @@ func (o *OpenStack) accumulateServerDiagnostics(acc telegraf.Accumulator) {
 			continue
 		}
 		tags := map[string]string{
-			"server_id": serverID,
+			"server_id":   serverID,
 			"server_name": s["server_name"].(string),
 		}
 		fields := map[string]interface{}{}
+		cpuCore := make(map[string]bool)
 		portName := make(map[string]bool)
 		storageName := make(map[string]bool)
 		memoryStats := make(map[string]interface{})
@@ -901,7 +1090,7 @@ func (o *OpenStack) accumulateServerDiagnostics(acc telegraf.Accumulator) {
 			if typePort.MatchString(k) {
 				portName[strings.Split(k, "_")[0]] = true
 			} else if typeCPU.MatchString(k) {
-				fields[k] = v
+				cpuCore[strings.Split(k, "_")[0]] = true
 			} else if typeStorage.MatchString(k) {
 				storageName[strings.Split(k, "_")[0]] = true
 			} else {
@@ -914,6 +1103,15 @@ func (o *OpenStack) accumulateServerDiagnostics(acc telegraf.Accumulator) {
 		fields["memory-swap_in"] = memoryStats["memory-swap_in"]
 		tags["no_of_ports"] = strconv.Itoa(len(portName))
 		tags["no_of_disks"] = strconv.Itoa(len(storageName))
+
+		cpuTotalTime := float64(0)
+		for key := range cpuCore {
+			cpuTotalTime += s[key+"_time"].(float64)
+		}
+
+		fields["cpu_time"] = cpuTotalTime / float64(len(cpuCore))
+		fields["num_cpus"] = len(cpuCore)
+
 		for key := range storageName {
 			fields["disk_errors"] = s[key+"_errors"]
 			fields["disk_read"] = s[key+"_read"]

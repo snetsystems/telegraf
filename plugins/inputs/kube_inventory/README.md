@@ -13,6 +13,7 @@ resources:
 - pods (containers)
 - services
 - statefulsets
+- resourcequotas
 
 Kubernetes is a fast moving project, with a new minor release every 3 months. As
 such, we will aim to maintain support only for versions that are supported by
@@ -61,7 +62,7 @@ avoid cardinality issues:
   ## Optional Resources to exclude from gathering
   ## Leave them with blank with try to gather everything available.
   ## Values can be - "daemonsets", deployments", "endpoints", "ingress", "nodes",
-  ## "persistentvolumes", "persistentvolumeclaims", "pods", "services", "statefulsets"
+  ## "persistentvolumes", "persistentvolumeclaims", "pods", "services", "statefulsets", "resourcequotas"
   # resource_exclude = [ "deployments", "nodes", "statefulsets" ]
 
   ## Optional Resources to include when gathering
@@ -97,7 +98,6 @@ list "persistentvolumes" and "nodes". You will then need to make an [aggregated
 ClusterRole][agg] that will eventually be bound to a user or group.
 
 [rbac]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
-
 [agg]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles
 
 ```yaml
@@ -107,11 +107,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: influx:cluster:viewer
   labels:
-    rbac.authorization.k8s.io/aggregate-view-telegraf: "true"
+    rbac.authorization.k8s.io/aggregate-view-telegraf: 'true'
 rules:
-  - apiGroups: [""]
-    resources: ["persistentvolumes", "nodes"]
-    verbs: ["get", "list"]
+  - apiGroups: ['']
+    resources: ['persistentvolumes', 'nodes']
+    verbs: ['get', 'list']
 
 ---
 kind: ClusterRole
@@ -121,9 +121,9 @@ metadata:
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
-        rbac.authorization.k8s.io/aggregate-view-telegraf: "true"
+        rbac.authorization.k8s.io/aggregate-view-telegraf: 'true'
     - matchLabels:
-        rbac.authorization.k8s.io/aggregate-to-view: "true"
+        rbac.authorization.k8s.io/aggregate-to-view: 'true'
 rules: [] # Rules are automatically filled in by the controller manager.
 ```
 
@@ -149,7 +149,7 @@ subjects:
 ## Quickstart in k3s
 
 When monitoring [k3s](https://k3s.io) server instances one can re-use already
-generated administration token.  This is less secure than using the more
+generated administration token. This is less secure than using the more
 restrictive dedicated telegraf user but more convienient to set up.
 
 ```console
@@ -170,6 +170,7 @@ tls_key = "/run/telegraf-kubernetes-key"
 ## Metrics
 
 - kubernetes_daemonset
+
   - tags:
     - daemonset_name
     - namespace
@@ -185,6 +186,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - updated_number_scheduled
 
 - kubernetes_deployment
+
   - tags:
     - deployment_name
     - namespace
@@ -195,6 +197,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - created
 
 - kubernetes_endpoints
+
   - tags:
     - endpoint_name
     - namespace
@@ -210,6 +213,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - port
 
 - kubernetes_ingress
+
   - tags:
     - ingress_name
     - namespace
@@ -225,6 +229,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - tls
 
 - kubernetes_node
+
   - tags:
     - node_name
   - fields:
@@ -238,6 +243,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - allocatable_pods
 
 - kubernetes_persistentvolume
+
   - tags:
     - pv_name
     - phase
@@ -246,6 +252,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - phase_type (int, [see below](#pv-phase_type))
 
 - kubernetes_persistentvolumeclaim
+
   - tags:
     - pvc_name
     - namespace
@@ -256,6 +263,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - phase_type (int, [see below](#pvc-phase_type))
 
 - kubernetes_pod_container
+
   - tags:
     - container_name
     - namespace
@@ -277,6 +285,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - resource_limits_memory_bytes
 
 - kubernetes_service
+
   - tags:
     - service_name
     - namespace
@@ -292,6 +301,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - target_port
 
 - kubernetes_statefulset
+
   - tags:
     - statefulset_name
     - namespace
@@ -305,6 +315,22 @@ tls_key = "/run/telegraf-kubernetes-key"
     - replicas_updated
     - spec_replicas
     - observed_generation
+
+- kubernetes_statefulset
+  - tags:
+    - resource
+    - namespace
+  - fields:
+    - hard_cpu_cores_limit
+    - hard_cpu_cores_request
+    - hard_memory_bytes_limit
+    - hard_memory_bytes_request
+    - hard_storage_bytes_request
+    - used_cpu_cores_limit
+    - used_cpu_cores_request
+    - used_memory_bytes_limit
+    - used_memory_bytes_request
+    - used_storage_bytes_request
 
 ### pv `phase_type`
 
@@ -345,6 +371,7 @@ kubernetes_pod,namespace=default,node_name=ip-172-17-0-2.internal,pod_name=tick1
 kubernetes_service,cluster_ip=172.29.61.80,namespace=redis-cache-0001,port_name=redis,port_protocol=TCP,selector_app=myapp,selector_io.kompose.service=redis,selector_role=slave,service_name=redis-slave created=1588690034000000000i,generation=0i,port=6379i,target_port=0i 1547597616000000000
 kubernetes_pod_container,container_name=telegraf,namespace=default,node_name=ip-172-17-0-2.internal,node_selector_node-role.kubernetes.io/compute=true,pod_name=tick1,phase=Running,state=running,readiness=ready resource_requests_cpu_units=0.1,resource_limits_memory_bytes=524288000,resource_limits_cpu_units=0.5,restarts_total=0i,state_code=0i,state_reason="",phase_reason="",resource_requests_memory_bytes=524288000 1547597616000000000
 kubernetes_statefulset,namespace=default,selector_select1=s1,statefulset_name=etcd replicas_updated=3i,spec_replicas=3i,observed_generation=1i,created=1544101669000000000i,generation=1i,replicas=3i,replicas_current=3i,replicas_ready=3i 1547597616000000000
+kubernetes_resourcequota,host=S2100113,namespace=test-prj0,resource=default-resource-quota hard_cpu_cores_limit=16i,hard_cpu_cores_request=16i,hard_memory_bytes_limit=34359738368i,hard_memory_bytes_request=34359738368i,hard_storage_bytes_request=107374182400i,used_cpu_cores_limit=1i,used_cpu_cores_request=1i,used_memory_bytes_limit=2684354560i,used_memory_bytes_request=2684354560i,used_storage_bytes_request=3221225472i 1683003895000000000
 ```
 
 [metric filtering]: https://github.com/influxdata/telegraf/blob/master/docs/CONFIGURATION.md#metric-filtering
