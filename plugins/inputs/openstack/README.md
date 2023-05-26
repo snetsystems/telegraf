@@ -78,6 +78,7 @@ your requirements. This will help with load and cardinality as well.
   ## Available services are:
   ## "agents", "aggregates", "flavors", "hypervisors", "networks", "nova_services",
   ## "ports", "projects", "servers", "services", "stacks", "storage_pools", "subnets", "volumes"
+  ## "compute_quotas", "network_quotas", "volume_quotas"
   # enabled_services = ["services", "projects", "hypervisors", "flavors", "networks", "volumes"]
 
   ## Collect Server Diagnostics
@@ -283,14 +284,8 @@ your requirements. This will help with load and cardinality as well.
   - no_of_ports
   - port_name
   - server_id
-  - cpu0_time [float]
-  - cpu1_time [float]
-  - cpu2_time [float]
-  - cpu3_time [float]
-  - cpu4_time [float]
-  - cpu5_time [float]
-  - cpu6_time [float]
-  - cpu7_time [float]
+  - cpu_time [float]
+  - num_cpus [integer]
   - disk_errors [float]
   - disk_read [float]
   - disk_read_req [float]
@@ -353,6 +348,78 @@ your requirements. This will help with load and cardinality as well.
   - size [integer]
   - total_attachments [integer]
   - updated_at [string]
+- compute_quotas
+  - fixed_ips_in_use
+  - floating_ips_in_use
+  - injected_file_content_bytes_in_use
+  - injected_file_path_bytes_in_use
+  - injected_files_in_use
+  - key_pairs_in_use
+  - metadata_items_in_use
+  - ram_in_use
+  - security_group_rules_in_use
+  - security_groups_in_use
+  - cores_in_use
+  - instances_in_use
+  - server_groups_in_use
+  - server_group_members_in_use
+  - fixed_ips_limit
+  - floating_ips_limit
+  - injected_file_content_bytes_limit
+  - injected_file_path_bytes_limit
+  - injected_files_limit
+  - key_pairs_limit
+  - metadata_items_limit
+  - ram_limit
+  - security_group_rules_limit
+  - security_groups_limit
+  - cores_limit
+  - instances_limit
+  - server_groups_limit
+  - server_group_members_limit
+- network_quotas
+  - floatingip_used
+  - network_used
+  - port_used
+  - rbac_policy_used
+  - router_used
+  - security_group_used
+  - security_group_rule_used
+  - subnet_used
+  - subnetpool_used
+  - trunk_used
+  - floatingip_limit
+  - network_limit
+  - port_limit
+  - rbac_policy_limit
+  - router_limit
+  - security_group_limit
+  - security_group_rule_limit
+  - subnet_limit
+  - subnetpool_limit
+  - trunk_limit
+- volume_quota
+  - volumes_in_use
+  - snapshots_in_use
+  - gigabytes_in_use
+  - per_volume_gigabytes_in_use
+  - backups_in_use
+  - backup_gigabytes_in_use
+  - groups_in_use
+  - volumes_allocated
+  - snapshots_allocated
+  - gigabytes_allocated
+  - per_volume_gigabytes_allocated
+  - backups_allocated
+  - backup_gigabytes_allocated
+  - groups_allocated
+  - volumes_limit
+  - snapshots_limit
+  - gigabytes_limit
+  - per_volume_gigabytes_limit
+  - backups_limit
+  - backup_gigabytes_limit
+  - groups_limit
 
 ## Example Output
 
@@ -371,5 +438,9 @@ your requirements. This will help with load and cardinality as well.
 > openstack_subnet,cidr=10.10.20.10/28,gateway_ip=10.10.20.17,host=telegraf_host,ip_version=4,name=IPv4_Subnet_2,network_id=73c6e1d3-f522-4a3f-8e3c-762a0c06d68b,openstack_tags_lab=True,project_id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,tenant_id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx allocation_pools="10.10.20.11-10.10.20.30",dhcp_enabled=true,dns_nameservers="",id="db69fbb2-9ca1-4370-8c78-82a27951c94b" 1634197660000000000
 > openstack_volume,attachment_attachment_id=c83ca0d6-c467-44a0-ac1f-f87d769c0c65,attachment_device=/dev/vda,attachment_host_name=vim1,availability_zone=nova,bootable=true,host=telegraf_host,status=in-use,user_id=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,volume_type=storage_bloack_1 attachment_attached_at="2021-01-12T21:02:04Z",attachment_server_id="c0c6b4af-0d26-4a0b-a6b4-4ea41fa3bb4a",created_at="2021-01-12T21:01:47Z",encrypted=false,id="d4204f1b-b1ae-1233-b25c-a57d91d2846e",multiattach=false,size=80i,total_attachments=1i,updated_at="2021-01-12T21:02:04Z" 1634197660000000000
 > openstack_request_duration,host=telegraf_host networks=703214354i 1634197660000000000
-> openstack_server_diagnostics,disk_name=vda,host=telegraf_host,no_of_disks=1,no_of_ports=2,port_name=vhu1234566c-9c,server_id=fdddb58c-bbb9-1234-894b-7ae140178909 cpu0_time=4924220000000,cpu1_time=218809610000000,cpu2_time=218624300000000,cpu3_time=220505700000000,disk_errors=-1,disk_read=619156992,disk_read_req=35423,disk_write=8432728064,disk_write_req=882445,memory=8388608,memory-actual=8388608,memory-rss=37276,memory-swap_in=0,port_rx=410516469288,port_rx_drop=13373626,port_rx_errors=-1,port_rx_packets=52140392,port_tx=417312195654,port_tx_drop=0,port_tx_errors=0,port_tx_packets=321385978 1634197660000000000
+> openstack_server_diagnostics,disk_name=vda,host=telegraf_host,no_of_disks=1,no_of_ports=2,port_name=vhu1234566c-9c,server_id=fdddb58c-bbb9-1234-894b-7ae140178909 cpu_time=165715957500000,num_cpus=4i,disk_errors=-1,disk_read=619156992,disk_read_req=35423,disk_write=8432728064,disk_write_req=882445,memory=8388608,memory-actual=8388608,memory-rss=37276,memory-swap_in=0,port_rx=410516469288,port_rx_drop=13373626,port_rx_errors=-1,port_rx_packets=52140392,port_tx=417312195654,port_tx_drop=0,port_tx_errors=0,port_tx_packets=321385978 1634197660000000000
+> openstack_compute_quota,host=telegraf_host,project=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,project_name=admin cores_in_use=4i,cores_limit=15i,fixed_ips_in_use=0i,fixed_ips_limit=-1i,floating_ips_in_use=0i,floating_ips_limit=-1i,injected_file_content_bytes_in_use=0i,injected_file_content_bytes_limit=10240i,injected_file_path_bytes_in_use=0i,injected_file_path_bytes_limit=255i,injected_files_in_use=0i,injected_files_limit=5i,instances_in_use=3i,instances_limit=10i,key_pairs_in_use=0i,key_pairs_limit=100i,metadata_items_in_use=0i,metadata_items_limit=128i,ram_in_use=6656i,ram_limit=51200i,security_group_rules_in_use=0i,security_group_rules_limit=-1i,security_groups_in_use=0i,security_groups_limit=-1i,server_group_members_in_use=0i,server_group_members_limit=10i,server_groups_in_use=0i,server_groups_limit=10i 1684974729000000000
+> openstack_network_quota,host=telegraf_host,project=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,project_name=admin floatingip_limit=50i,floatingip_used=2i,network_limit=100i,network_used=1i,port_limit=500i,port_used=7i,rbac_policy_limit=10i,rbac_policy_used=0i,router_limit=10i,router_used=1i,security_group_limit=10i,security_group_rule_limit=100i,security_group_rule_used=18i,security_group_used=4i,subnet_limit=100i,subnet_used=1i,subnetpool_limit=-1i,subnetpool_used=0i,trunk_limit=-1i,trunk_used=0i 1684974729000000000
+> openstack_volume_quota,host=telegraf_host,project=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,project_name=admin backup_gigabytes_allocated=0i,backup_gigabytes_in_use=0i,backup_gigabytes_limit=1000i,backups_allocated=0i,backups_in_use=0i,backups_limit=10i,gigabytes_allocated=0i,gigabytes_in_use=61i,gigabytes_limit=1000i,groups_allocated=0i,groups_in_use=0i,groups_limit=10i,per_volume_gigabytes_allocated=0i,per_volume_gigabytes_in_use=0i,per_volume_gigabytes_limit=-1i,snapshots_allocated=0i,snapshots_in_use=0i,snapshots_limit=10i,volumes_allocated=0i,volumes_in_use=3i,volumes_limit=10i 1684974730000000000
+
 ```
