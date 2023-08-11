@@ -22,6 +22,7 @@ import (
 )
 
 // DO NOT REMOVE THE NEXT TWO LINES! This is required to embed the sampleConfig data.
+//
 //go:embed sample.conf
 var sampleConfig string
 
@@ -106,10 +107,16 @@ func (m *Ipmi) Gather(acc telegraf.Accumulator) error {
 
 func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 	opts := make([]string, 0)
+	ipmiIP := ""
 	hostname := ""
 	if server != "" {
+		lastIndex := strings.LastIndex(server, ",")
+		if lastIndex > 1 && server[lastIndex+1:] != "" {
+			hostname = strings.TrimSpace(server[lastIndex+1:])
+		}
+
 		conn := NewConnection(server, m.Privilege, m.HexKey)
-		hostname = conn.Hostname
+		ipmiIP = conn.IpmiIP
 		opts = conn.options()
 	}
 	opts = append(opts, "sdr")
@@ -152,12 +159,12 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 		return fmt.Errorf("failed to run command %s: %s - %s", strings.Join(sanitizeIPMICmd(cmd.Args), " "), err, string(out))
 	}
 	if m.MetricVersion == 2 {
-		return m.parseV2(acc, hostname, out, timestamp)
+		return m.parseV2(acc, ipmiIP, hostname, out, timestamp)
 	}
-	return m.parseV1(acc, hostname, out, timestamp)
+	return m.parseV1(acc, ipmiIP, hostname, out, timestamp)
 }
 
-func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, hostname string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
@@ -172,8 +179,11 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 		}
 
 		// tag the server is we have one
+		if ipmiIP != "" {
+			tags["server"] = ipmiIP
+		}
 		if hostname != "" {
-			tags["server"] = hostname
+			tags["hostname"] = hostname
 		}
 
 		fields := make(map[string]interface{})
@@ -184,7 +194,6 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 		}
 
 		description := ipmiFields["description"]
-
 		// handle hex description field
 		if strings.HasPrefix(description, "0x") {
 			descriptionInt, err := strconv.ParseInt(description, 0, 64)
@@ -214,7 +223,7 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP string, hostname string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// CMOS Battery     | 65h | ok  |  7.1 |
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
@@ -230,9 +239,12 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 			"name": transform(ipmiFields["name"]),
 		}
 
-		// tag the server is we have one
+		// tag the server is we have oneserver
+		if ipmiIP != "" {
+			tags["server"] = ipmiIP
+		}
 		if hostname != "" {
-			tags["server"] = hostname
+			tags["hostname"] = hostname
 		}
 		tags["entity_id"] = transform(ipmiFields["entity_id"])
 		tags["status_code"] = trim(ipmiFields["status_code"])
