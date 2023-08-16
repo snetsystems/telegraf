@@ -47,11 +47,13 @@ they're configured:
   # privilege = "ADMINISTRATOR"
   ##
   ## optionally specify one or more servers via a url matching
+  ## optionally specify hostname tag
   ##  [username[:password]@][protocol[(address),hostname]]
   ##  e.g.
   ##    root:passwd@lan(127.0.0.1),example_host
   ##
-  ## The 'hostname' is an optional tag that can be used to identify the server with a human-readable name.
+  ## 'hostname' is an optional tag to identify the server
+  ## if no hostname is entered, the hostname tag will not be generated
   ## if no servers are specified, local machine sensor stats will be queried
   ##
   # v = ["USERID:PASSW0RD@lan(192.168.1.1),example_host"]
@@ -89,7 +91,7 @@ Version 1 schema:
     - unit
     - host
     - server (only when retrieving stats from remote servers)
-    - hostname (only when specifying hostname in config)
+    - hostname (only when hostname entered in server connect info)
   - fields:
     - status (int, 1=ok status_code/0=anything else)
     - value (float)
