@@ -112,7 +112,7 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 	if server != "" {
 		lastIndex := strings.LastIndex(server, ",")
 		if lastIndex > 1 && server[lastIndex+1:] != "" {
-			hostname = strings.TrimSpace(server[lastIndex+1:])
+			hostname = trim(server[lastIndex+1:])
 		}
 
 		conn := NewConnection(server, m.Privilege, m.HexKey)
@@ -169,6 +169,7 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, hostname string,
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
 	for scanner.Scan() {
+
 		ipmiFields := m.extractFieldsFromRegex(reV1ParseLine, scanner.Text())
 		if len(ipmiFields) != 3 {
 			continue
