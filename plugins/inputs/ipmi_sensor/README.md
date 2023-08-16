@@ -90,7 +90,7 @@ Version 1 schema:
     - host
     - server (only when retrieving stats from remote servers)
     - hostname (only when specifying hostname in config)
-  - fields:d
+  - fields:
     - status (int, 1=ok status_code/0=anything else)
     - value (float)
 
