@@ -107,7 +107,7 @@ Version 2 schema:
     - unit (only on analog values)
     - host
     - server (only when retrieving stats from remote)
-    - hostname (only when specifying hostname in config)
+    - hostname (only when hostname entered in server connect info)
   - fields:
     - value (float)
 
