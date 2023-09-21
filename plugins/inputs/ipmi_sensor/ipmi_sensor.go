@@ -168,15 +168,26 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, hostname string,
 	// each line will look something like
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
+	cpuIndex := 0
 	for scanner.Scan() {
-
 		ipmiFields := m.extractFieldsFromRegex(reV1ParseLine, scanner.Text())
 		if len(ipmiFields) != 3 {
 			continue
 		}
 
+		tag := transform(ipmiFields["name"])
+
+		if tag == "temp" {
+			cpuIndex++
+			cpuTag := convertToCPUTempTag(ipmiFields, cpuIndex)
+			if cpuTag == tag {
+				cpuIndex--
+			}
+			tag = cpuTag
+		}
+
 		tags := map[string]string{
-			"name": transform(ipmiFields["name"]),
+			"name": tag,
 		}
 
 		// tag the server is we have one
@@ -230,14 +241,26 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP string, hostname string,
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
 	// Drive 0          | A0h | ok  |  7.1 | Drive Present
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
+	cpuIndex := 0
 	for scanner.Scan() {
 		ipmiFields := m.extractFieldsFromRegex(reV2ParseLine, scanner.Text())
 		if len(ipmiFields) < 3 || len(ipmiFields) > 4 {
 			continue
 		}
 
+		tag := transform(ipmiFields["name"])
+
+		if tag == "temp" {
+			cpuIndex++
+			cpuTag := convertToCPUTempTag(ipmiFields, cpuIndex)
+			if cpuTag == tag {
+				cpuIndex--
+			}
+			tag = cpuTag
+		}
+
 		tags := map[string]string{
-			"name": transform(ipmiFields["name"]),
+			"name": tag,
 		}
 
 		// tag the server is we have oneserver
@@ -325,6 +348,23 @@ func transform(s string) string {
 	s = trim(s)
 	s = strings.ToLower(s)
 	return strings.ReplaceAll(s, " ", "_")
+}
+
+func convertToCPUTempTag(ipmiFields map[string]string, index int) string {
+	s := transform(ipmiFields["name"])
+	description := ipmiFields["description"]
+
+	if strings.Index(description, " ") > 0 {
+		// split middle column into value and unit
+		valunit := strings.SplitN(description, " ", 2)
+
+		if len(valunit) > 1 {
+			if transform(valunit[1]) == "degrees_c" {
+				return fmt.Sprintf("cpu%s_%s", strconv.Itoa(index), s)
+			}
+		}
+	}
+	return s
 }
 
 func init() {
