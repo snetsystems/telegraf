@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -108,16 +109,25 @@ func (m *Ipmi) Gather(acc telegraf.Accumulator) error {
 func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 	opts := make([]string, 0)
 	ipmiIP := ""
-	hostname := ""
-	if server != "" {
-		lastIndex := strings.LastIndex(server, ",")
-		if lastIndex > 1 && server[lastIndex+1:] != "" {
-			hostname = trim(server[lastIndex+1:])
-		}
+	customTags := make(map[string]string)
 
-		conn := NewConnection(server, m.Privilege, m.HexKey)
-		ipmiIP = conn.IpmiIP
-		opts = conn.options()
+	if server != "" {
+		server := trimAll(server)
+		startIndex := strings.LastIndex(server, "),{")
+
+		if startIndex >= 0 {
+			jsonBytes := []byte(strings.ReplaceAll(server[startIndex+2:], "'", "\""))
+
+			err := json.Unmarshal(jsonBytes, &customTags)
+			if err != nil {
+				fmt.Println(err)
+				return fmt.Errorf("Error unmarshaling  %s ", err)
+			}
+
+			conn := NewConnection(server[:startIndex+1], m.Privilege, m.HexKey)
+			ipmiIP = conn.IpmiIP
+			opts = conn.options()
+		}
 	}
 	opts = append(opts, "sdr")
 	if m.UseCache {
@@ -159,12 +169,12 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 		return fmt.Errorf("failed to run command %s: %s - %s", strings.Join(sanitizeIPMICmd(cmd.Args), " "), err, string(out))
 	}
 	if m.MetricVersion == 2 {
-		return m.parseV2(acc, ipmiIP, hostname, out, timestamp)
+		return m.parseV2(acc, ipmiIP, customTags, out, timestamp)
 	}
-	return m.parseV1(acc, ipmiIP, hostname, out, timestamp)
+	return m.parseV1(acc, ipmiIP, customTags, out, timestamp)
 }
 
-func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, customTags map[string]string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
@@ -194,8 +204,9 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, hostname string,
 		if ipmiIP != "" {
 			tags["server"] = ipmiIP
 		}
-		if hostname != "" {
-			tags["hostname"] = hostname
+
+		for k, v := range customTags {
+			tags[k] = v
 		}
 
 		fields := make(map[string]interface{})
@@ -235,7 +246,7 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, hostname string,
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP string, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP string, customTags map[string]string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// CMOS Battery     | 65h | ok  |  7.1 |
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
@@ -267,8 +278,8 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP string, hostname string,
 		if ipmiIP != "" {
 			tags["server"] = ipmiIP
 		}
-		if hostname != "" {
-			tags["hostname"] = hostname
+		for k, v := range customTags {
+			tags[k] = v
 		}
 		tags["entity_id"] = transform(ipmiFields["entity_id"])
 		tags["status_code"] = trim(ipmiFields["status_code"])
@@ -342,6 +353,9 @@ func sanitizeIPMICmd(args []string) []string {
 
 func trim(s string) string {
 	return strings.TrimSpace(s)
+}
+func trimAll(s string) string {
+	return strings.ReplaceAll(s, " ", "")
 }
 
 func transform(s string) string {

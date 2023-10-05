@@ -12,7 +12,7 @@ func TestNewConnection(t *testing.T) {
 		con  *Connection
 	}{
 		{
-			"USERID:PASSW0RD@lan(192.168.1.1),host",
+			"USERID:PASSW0RD@lan(192.168.1.1),{'hostname':'host', 'panal_board':'pb1'}",
 			&Connection{
 				IpmiIP:    "192.168.1.1",
 				Username:  "USERID",
