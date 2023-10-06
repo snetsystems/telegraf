@@ -114,9 +114,10 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 	if server != "" {
 		server := trimAll(server)
 		startIndex := strings.LastIndex(server, "),{")
+		connInfo := regexp.MustCompile(`(.*\)),(\{.*\})`).FindStringSubmatch(server)
 
-		if startIndex >= 0 {
-			jsonBytes := []byte(strings.ReplaceAll(server[startIndex+2:], "'", "\""))
+		if startIndex >= 0 && len(connInfo) > 2 {
+			jsonBytes := []byte(strings.ReplaceAll(connInfo[2], "'", "\""))
 
 			err := json.Unmarshal(jsonBytes, &customTags)
 			if err != nil {
@@ -124,7 +125,7 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 				return fmt.Errorf("Error unmarshaling  %s ", err)
 			}
 
-			conn := NewConnection(server[:startIndex+1], m.Privilege, m.HexKey)
+			conn := NewConnection(connInfo[1], m.Privilege, m.HexKey)
 			ipmiIP = conn.IpmiIP
 			opts = conn.options()
 		}
@@ -178,8 +179,8 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP string, customTags map[s
 	// each line will look something like
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
-	cpuIndex := 0
-	for scanner.Scan() {
+
+	for cpuIndex := 0; scanner.Scan(); {
 		ipmiFields := m.extractFieldsFromRegex(reV1ParseLine, scanner.Text())
 		if len(ipmiFields) != 3 {
 			continue
@@ -374,7 +375,7 @@ func convertToCPUTempTag(ipmiFields map[string]string, index int) string {
 
 		if len(valunit) > 1 {
 			if transform(valunit[1]) == "degrees_c" {
-				return fmt.Sprintf("cpu%s_%s", strconv.Itoa(index), s)
+				return fmt.Sprintf("cpu%d_%s", index, s)
 			}
 		}
 	}
