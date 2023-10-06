@@ -226,6 +226,110 @@ func TestGather(t *testing.T) {
 	for _, test := range testsWithoutServer {
 		acc.AssertContainsTaggedFields(t, "ipmi_sensor", test.fields, test.tags)
 	}
+
+	i = &Ipmi{
+		Servers:   []string{"USERID:PASSW0,RD@lan(192.168.1.1) "},
+		Path:      "ipmitool",
+		Privilege: "USER",
+		Timeout:   config.Duration(time.Second * 5),
+		HexKey:    "1234567F",
+		Log:       testutil.Logger{},
+	}
+
+	require.NoError(t, i.Init())
+	require.NoError(t, acc.GatherError(i.Gather))
+
+	conn = NewConnection(i.Servers[0], i.Privilege, i.HexKey)
+	require.EqualValues(t, "USERID", conn.Username)
+	require.EqualValues(t, "lan", conn.Interface)
+	require.EqualValues(t, "1234567F", conn.HexKey)
+
+	var testsWithoutCutsomTagServer = []struct {
+		fields map[string]interface{}
+		tags   map[string]string
+	}{
+		{
+			map[string]interface{}{
+				"value":  float64(20),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "ambient_temp",
+				"server": "192.168.1.1",
+				"unit":   "degrees_c",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(80),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "altitude",
+				"server": "192.168.1.1",
+				"unit":   "feet",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(210),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "avg_power",
+				"server": "192.168.1.1",
+				"unit":   "watts",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(4.9),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "planar_5v",
+				"server": "192.168.1.1",
+				"unit":   "volts",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(3.05),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "planar_vbat",
+				"server": "192.168.1.1",
+				"unit":   "volts",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(2610),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "fan_1a_tach",
+				"server": "192.168.1.1",
+				"unit":   "rpm",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(1775),
+				"status": 1,
+			},
+			map[string]string{
+				"name":   "fan_1b_tach",
+				"server": "192.168.1.1",
+				"unit":   "rpm",
+			},
+		},
+	}
+
+	for _, test := range testsWithoutCutsomTagServer {
+		acc.AssertContainsTaggedFields(t, "ipmi_sensor", test.fields, test.tags)
+	}
 }
 
 // fackeExecCommand is a helper function that mock

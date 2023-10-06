@@ -115,8 +115,10 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 		server := trimAll(server)
 		startIndex := strings.LastIndex(server, "),{")
 		connInfo := regexp.MustCompile(`(.*\)),(\{.*\})`).FindStringSubmatch(server)
-
+		serverConn := server
 		if startIndex >= 0 && len(connInfo) > 2 {
+
+			serverConn = connInfo[1]
 			jsonBytes := []byte(strings.ReplaceAll(connInfo[2], "'", "\""))
 
 			err := json.Unmarshal(jsonBytes, &customTags)
@@ -125,10 +127,11 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string) error {
 				return fmt.Errorf("Error unmarshaling  %s ", err)
 			}
 
-			conn := NewConnection(connInfo[1], m.Privilege, m.HexKey)
-			ipmiIP = conn.IpmiIP
-			opts = conn.options()
 		}
+
+		conn := NewConnection(serverConn, m.Privilege, m.HexKey)
+		ipmiIP = conn.IpmiIP
+		opts = conn.options()
 	}
 	opts = append(opts, "sdr")
 	if m.UseCache {
