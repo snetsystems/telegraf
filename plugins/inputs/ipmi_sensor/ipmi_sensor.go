@@ -253,8 +253,8 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP string, customTags map[s
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
 	// Drive 0          | A0h | ok  |  7.1 | Drive Present
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
-	cpuIndex := 0
-	for scanner.Scan() {
+
+	for cpuIndex := 0; scanner.Scan(); {
 		ipmiFields := m.extractFieldsFromRegex(reV2ParseLine, scanner.Text())
 		if len(ipmiFields) < 3 || len(ipmiFields) > 4 {
 			continue
