@@ -16,11 +16,29 @@ import (
 
 func TestGather(t *testing.T) {
 	i := &Ipmi{
-		Servers:   []string{"USERID:PASSW0,RD@lan(192.168.1.1) , { 'hostname':'test-host','distribution_panal':'pb1'}"},
+		Servers: []Server{
+			{
+				Connection: "USERID:PASSW0,RD@lan(192.168.1.1)",
+				ExtraTags: map[string]interface{}{
+					"hostname": "test-host",
+					"line":     "C",
+					"rack":     "02",
+					"pdu": map[string]interface{}{
+						"#1": []interface{}{"calc_psu1"},
+						"#2": []interface{}{"calc_psu2"},
+					},
+				},
+			},
+		},
 		Path:      "ipmitool",
 		Privilege: "USER",
 		Timeout:   config.Duration(time.Second * 5),
 		HexKey:    "1234567F",
+		Formula: map[string]string{
+			"calc_psu1": "[current_1] * [voltage_1]",
+			"calc_psu2": "[current_1] * [voltage_1]",
+		},
+		ExtraTags: []string{"hostname", "line", "rack", "pdu"},
 		Log:       testutil.Logger{},
 	}
 
@@ -30,9 +48,9 @@ func TestGather(t *testing.T) {
 
 	require.NoError(t, i.Init())
 	require.NoError(t, acc.GatherError(i.Gather))
-	require.EqualValues(t, acc.NFields(), 262, "non-numeric measurements should be ignored")
+	require.EqualValues(t, acc.NFields(), 274, "non-numeric measurements should be ignored")
 
-	conn := NewConnection(i.Servers[0], i.Privilege, i.HexKey)
+	conn := NewConnection(i.Servers[0].Connection, i.Privilege, i.HexKey)
 	require.EqualValues(t, "USERID", conn.Username)
 	require.EqualValues(t, "lan", conn.Interface)
 	require.EqualValues(t, "1234567F", conn.HexKey)
@@ -43,15 +61,44 @@ func TestGather(t *testing.T) {
 	}{
 		{
 			map[string]interface{}{
+				"value":  float64(216),
+				"status": 1,
+			},
+			map[string]string{
+				"name":     "calc_psu1",
+				"server":   "192.168.1.1",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
+				"pdu":      "#1",
+			},
+		},
+		{
+			map[string]interface{}{
+				"value":  float64(216),
+				"status": 1,
+			},
+			map[string]string{
+				"name":     "calc_psu2",
+				"server":   "192.168.1.1",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
+				"pdu":      "#2",
+			},
+		},
+		{
+			map[string]interface{}{
 				"value":  float64(20),
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "ambient_temp",
-				"server":             "192.168.1.1",
-				"unit":               "degrees_c",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "ambient_temp",
+				"server":   "192.168.1.1",
+				"unit":     "degrees_c",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 		{
@@ -60,11 +107,12 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "altitude",
-				"server":             "192.168.1.1",
-				"unit":               "feet",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "altitude",
+				"server":   "192.168.1.1",
+				"unit":     "feet",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 		{
@@ -73,11 +121,12 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "avg_power",
-				"server":             "192.168.1.1",
-				"unit":               "watts",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "avg_power",
+				"server":   "192.168.1.1",
+				"unit":     "watts",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 		{
@@ -86,11 +135,12 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "planar_5v",
-				"server":             "192.168.1.1",
-				"unit":               "volts",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "planar_5v",
+				"server":   "192.168.1.1",
+				"unit":     "volts",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 		{
@@ -99,11 +149,12 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "planar_vbat",
-				"server":             "192.168.1.1",
-				"unit":               "volts",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "planar_vbat",
+				"server":   "192.168.1.1",
+				"unit":     "volts",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 		{
@@ -112,11 +163,12 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "fan_1a_tach",
-				"server":             "192.168.1.1",
-				"unit":               "rpm",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "fan_1a_tach",
+				"server":   "192.168.1.1",
+				"unit":     "rpm",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 		{
@@ -125,11 +177,12 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":               "fan_1b_tach",
-				"server":             "192.168.1.1",
-				"unit":               "rpm",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":     "fan_1b_tach",
+				"server":   "192.168.1.1",
+				"unit":     "rpm",
+				"hostname": "test-host",
+				"line":     "C",
+				"rack":     "02",
 			},
 		},
 	}
@@ -228,7 +281,11 @@ func TestGather(t *testing.T) {
 	}
 
 	i = &Ipmi{
-		Servers:   []string{"USERID:PASSW0,RD@lan(192.168.1.1) "},
+		Servers: []Server{
+			{
+				Connection: "USERID:PASSW0,RD@lan(192.168.1.1)",
+			},
+		},
 		Path:      "ipmitool",
 		Privilege: "USER",
 		Timeout:   config.Duration(time.Second * 5),
@@ -239,12 +296,12 @@ func TestGather(t *testing.T) {
 	require.NoError(t, i.Init())
 	require.NoError(t, acc.GatherError(i.Gather))
 
-	conn = NewConnection(i.Servers[0], i.Privilege, i.HexKey)
+	conn = NewConnection(i.Servers[0].Connection, i.Privilege, i.HexKey)
 	require.EqualValues(t, "USERID", conn.Username)
 	require.EqualValues(t, "lan", conn.Interface)
 	require.EqualValues(t, "1234567F", conn.HexKey)
 
-	var testsWithoutCutsomTagServer = []struct {
+	var testsWithoutExtraTagServer = []struct {
 		fields map[string]interface{}
 		tags   map[string]string
 	}{
@@ -327,7 +384,7 @@ func TestGather(t *testing.T) {
 		},
 	}
 
-	for _, test := range testsWithoutCutsomTagServer {
+	for _, test := range testsWithoutExtraTagServer {
 		acc.AssertContainsTaggedFields(t, "ipmi_sensor", test.fields, test.tags)
 	}
 }
@@ -352,6 +409,10 @@ func TestHelperProcess(_ *testing.T) {
 	}
 
 	mockData := `Ambient Temp     | 20 degrees C      | ok
+Current_1		 | 1.0  Amps 		 | ok
+Voltage_1		 | 216.00 Volts 	 | ok
+Current_2		 | 1.0  Amps 		 | ok
+Voltage_2		 | 216.00 Volts 	 | ok
 Altitude         | 80 feet           | ok
 Avg Power        | 210 Watts         | ok
 Planar 3.3V      | 3.29 Volts        | ok
@@ -508,7 +569,21 @@ OS RealTime Mod  | 0x00              | ok
 
 func TestGatherV2(t *testing.T) {
 	i := &Ipmi{
-		Servers:       []string{"USERID:PASSW0RD@lan(192.168.1.1), {'hostname':'test-host','distribution_panal':'pb1'}"},
+		Servers: []Server{
+			{
+				Connection: "USERID:PASSW0,RD@lan(192.168.1.1)",
+				ExtraTags: Tags{
+					"hostname": "test-host",
+					"line":     "C",
+					"rack":     "02",
+				},
+			},
+		},
+		Formula: map[string]string{
+			"calc_psu1": "[current_1] * [voltage_1]",
+			"calc_pus2": "[current_1] - [voltage_1]",
+		},
+		ExtraTags:     []string{"hostname", "line", "rack"},
 		Path:          "ipmitool",
 		Privilege:     "USER",
 		Timeout:       config.Duration(time.Second * 5),
@@ -523,7 +598,7 @@ func TestGatherV2(t *testing.T) {
 	require.NoError(t, i.Init())
 	require.NoError(t, acc.GatherError(i.Gather))
 
-	conn := NewConnection(i.Servers[0], i.Privilege, i.HexKey)
+	conn := NewConnection(i.Servers[0].Connection, i.Privilege, i.HexKey)
 	require.EqualValues(t, "USERID", conn.Username)
 	require.EqualValues(t, "lan", conn.Interface)
 	require.EqualValues(t, "0000000F", conn.HexKey)
@@ -538,13 +613,14 @@ func TestGatherV2(t *testing.T) {
 				"value": float64(0),
 			},
 			map[string]string{
-				"name":               "sel",
-				"entity_id":          "7.1",
-				"status_code":        "ns",
-				"status_desc":        "no_reading",
-				"server":             "192.168.1.1",
-				"hostname":           "test-host",
-				"distribution_panal": "pb1",
+				"name":        "sel",
+				"entity_id":   "7.1",
+				"status_code": "ns",
+				"status_desc": "no_reading",
+				"server":      "192.168.1.1",
+				"hostname":    "test-host",
+				"line":        "C",
+				"rack":        "02",
 			},
 		},
 	}
@@ -685,6 +761,7 @@ Fan1             | 30h | ok  |  7.1 | 5040 RPM
 Inlet Temp       | 04h | ok  |  7.1 | 25 degrees C
 USB Cable Pres   | 50h | ok  |  7.1 | Connected
 Current 1        | 6Ah | ok  | 10.1 | 7.20 Amps
+Voltage 1       | 74h | ok  | 10.2 | 220 Volts
 Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected
 `
 
@@ -752,10 +829,11 @@ Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected
 
 func Test_parseV1(t *testing.T) {
 	type args struct {
-		ipmiIP     string
-		customTags map[string]string
-		cmdOut     []byte
-		measuredAt time.Time
+		ipmiIP      string
+		extraTags   Tags
+		cmdOut      []byte
+		measuredAt  time.Time
+		formulaData FormulaData
 	}
 	tests := []struct {
 		name       string
@@ -766,8 +844,12 @@ func Test_parseV1(t *testing.T) {
 		{
 			name: "Test correct V1 parsing with hex code",
 			args: args{
-				ipmiIP:     "10.20.2.1",
-				customTags: map[string]string{"hostname": "host"},
+				ipmiIP: "10.20.2.1",
+				extraTags: Tags{
+					"hostname": "host",
+					"line":     "C",
+					"rack":     "05",
+				},
 				measuredAt: time.Now(),
 				cmdOut:     []byte("PS1 Status       | 0x02              | ok"),
 			},
@@ -777,8 +859,12 @@ func Test_parseV1(t *testing.T) {
 		{
 			name: "Test correct V1 parsing with value with unit",
 			args: args{
-				ipmiIP:     "10.20.2.1",
-				customTags: map[string]string{"hostname": "host", "distribution_panal": "PB_1"},
+				ipmiIP: "10.20.2.1",
+				extraTags: Tags{
+					"hostname": "host",
+					"line":     "C",
+					"rack":     "05",
+				},
 				measuredAt: time.Now(),
 				cmdOut:     []byte("Avg Power        | 210 Watts         | ok"),
 			},
@@ -795,7 +881,7 @@ func Test_parseV1(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var acc testutil.Accumulator
 
-			if err := ipmi.parseV1(&acc, tt.args.ipmiIP, tt.args.customTags, tt.args.cmdOut, tt.args.measuredAt); (err != nil) != tt.wantErr {
+			if err := ipmi.parseV1(&acc, tt.args.ipmiIP, tt.args.extraTags, tt.args.cmdOut, tt.args.measuredAt, tt.args.formulaData); (err != nil) != tt.wantErr {
 				t.Errorf("parseV1() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -806,10 +892,11 @@ func Test_parseV1(t *testing.T) {
 
 func Test_parseV2(t *testing.T) {
 	type args struct {
-		ipmiIP     string
-		customTags map[string]string
-		cmdOut     []byte
-		measuredAt time.Time
+		ipmiIP      string
+		extraTags   Tags
+		cmdOut      []byte
+		measuredAt  time.Time
+		formulaData FormulaData
 	}
 	tests := []struct {
 		name     string
@@ -820,10 +907,13 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "Test correct V2 parsing with analog value with unit",
 			args: args{
-				ipmiIP:     "10.20.2.1",
-				customTags: map[string]string{"hostname": "host"},
-				cmdOut:     []byte("Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected"),
-				measuredAt: time.Now(),
+				ipmiIP: "10.20.2.1",
+				extraTags: Tags{"hostname": "host",
+					"line": "C",
+					"rack": "05"},
+				cmdOut:      []byte("Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected"),
+				measuredAt:  time.Now(),
+				formulaData: FormulaData{},
 			},
 			expected: []telegraf.Metric{
 				testutil.MustMetric("ipmi_sensor",
@@ -835,6 +925,8 @@ func Test_parseV2(t *testing.T) {
 						"entity_id":   "10.1",
 						"unit":        "watts",
 						"status_desc": "presence_detected",
+						"line":        "C",
+						"rack":        "05",
 					},
 					map[string]interface{}{"value": 110.0},
 					time.Unix(0, 0),
@@ -845,10 +937,13 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "Test correct V2 parsing without analog value",
 			args: args{
-				ipmiIP:     "10.20.2.1",
-				customTags: map[string]string{"hostname": "host"},
-				cmdOut:     []byte("Intrusion        | 73h | ok  |  7.1 |"),
-				measuredAt: time.Now(),
+				ipmiIP: "10.20.2.1",
+				extraTags: Tags{"hostname": "host",
+					"line": "C",
+					"rack": "05"},
+				cmdOut:      []byte("Intrusion        | 73h | ok  |  7.1 |"),
+				measuredAt:  time.Now(),
+				formulaData: FormulaData{},
 			},
 			expected: []telegraf.Metric{
 				testutil.MustMetric("ipmi_sensor",
@@ -859,6 +954,8 @@ func Test_parseV2(t *testing.T) {
 						"hostname":    "host",
 						"entity_id":   "7.1",
 						"status_desc": "ok",
+						"line":        "C",
+						"rack":        "05",
 					},
 					map[string]interface{}{"value": 0.0},
 					time.Unix(0, 0),
@@ -869,10 +966,13 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "parse negative value",
 			args: args{
-				ipmiIP:     "10.20.2.1",
-				customTags: map[string]string{"hostname": "host"},
-				cmdOut:     []byte("DIMM Thrm Mrgn 1 | B0h | ok  |  8.1 | -55 degrees C"),
-				measuredAt: time.Now(),
+				ipmiIP: "10.20.2.1",
+				extraTags: Tags{"hostname": "host",
+					"line": "C",
+					"rack": "05"},
+				cmdOut:      []byte("DIMM Thrm Mrgn 1 | B0h | ok  |  8.1 | -55 degrees C"),
+				measuredAt:  time.Now(),
+				formulaData: FormulaData{},
 			},
 			expected: []telegraf.Metric{
 				testutil.MustMetric("ipmi_sensor",
@@ -883,6 +983,8 @@ func Test_parseV2(t *testing.T) {
 						"hostname":    "host",
 						"entity_id":   "8.1",
 						"unit":        "degrees_c",
+						"line":        "C",
+						"rack":        "05",
 					},
 					map[string]interface{}{"value": -55.0},
 					time.Unix(0, 0),
@@ -893,21 +995,25 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "add custom tag",
 			args: args{
-				ipmiIP:     "10.20.2.1",
-				customTags: map[string]string{"hostname": "host", "distribution_panal": "PB_1"},
-				cmdOut:     []byte("DIMM Thrm Mrgn 1 | B0h | ok  |  8.1 | -55 degrees C"),
-				measuredAt: time.Now(),
+				ipmiIP: "10.20.2.1",
+				extraTags: Tags{"hostname": "host",
+					"line": "C",
+					"rack": "05"},
+				cmdOut:      []byte("DIMM Thrm Mrgn 1 | B0h | ok  |  8.1 | -55 degrees C"),
+				measuredAt:  time.Now(),
+				formulaData: FormulaData{},
 			},
 			expected: []telegraf.Metric{
 				testutil.MustMetric("ipmi_sensor",
 					map[string]string{
-						"name":               "dimm_thrm_mrgn_1",
-						"status_code":        "ok",
-						"server":             "10.20.2.1",
-						"hostname":           "host",
-						"entity_id":          "8.1",
-						"unit":               "degrees_c",
-						"distribution_panal": "PB_1",
+						"name":        "dimm_thrm_mrgn_1",
+						"status_code": "ok",
+						"server":      "10.20.2.1",
+						"hostname":    "host",
+						"entity_id":   "8.1",
+						"unit":        "degrees_c",
+						"line":        "C",
+						"rack":        "05",
 					},
 					map[string]interface{}{"value": -55.0},
 					time.Unix(0, 0),
@@ -924,7 +1030,7 @@ func Test_parseV2(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var acc testutil.Accumulator
-			if err := ipmi.parseV2(&acc, tt.args.ipmiIP, tt.args.customTags, tt.args.cmdOut, tt.args.measuredAt); (err != nil) != tt.wantErr {
+			if err := ipmi.parseV2(&acc, tt.args.ipmiIP, tt.args.extraTags, tt.args.cmdOut, tt.args.measuredAt, tt.args.formulaData); (err != nil) != tt.wantErr {
 				t.Errorf("parseV2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			testutil.RequireMetricsEqual(t, tt.expected, acc.GetTelegrafMetrics(), testutil.IgnoreTime())
@@ -978,4 +1084,188 @@ func TestSanitizeIPMICmd(t *testing.T) {
 			require.Equal(t, tt.expected, sanitizedArgs)
 		})
 	}
+}
+
+func Test_Formula(t *testing.T) {
+	i := &Ipmi{
+		Servers: []Server{
+			{
+				Connection: "USERID:PASSW0,RD@lan(192.168.1.1)",
+				ExtraTags: Tags{
+					"hostname": "test-host",
+					"line":     "C",
+					"rack":     "02",
+					"pdu":      map[string][]string{"#1": {"psu1"}, "#2": {"psu2", "psu3"}},
+				},
+			},
+		},
+		Path:      "ipmitool",
+		Privilege: "USER",
+		Timeout:   config.Duration(time.Second * 5),
+		HexKey:    "1234567F",
+		Formula: map[string]string{
+			"calc_psu1": "[current_1] * [voltage_1]",
+			"calc_psu2": "[current_1] - [voltage_2]",
+		},
+		ExtraTags: []string{"hostname", "line", "rack", "pdu"},
+		Log:       testutil.Logger{},
+	}
+
+	formulaData, err := i.initialFormulaMap()
+	require.NoError(t, err, "initialFormulaMap should not produce an error with correct prefix")
+
+	expectedFormula := map[string]string{
+		"calc_psu1": "[current_1] * [voltage_1]",
+		"calc_psu2": "[current_1] - [voltage_2]",
+	}
+	require.Equal(t, expectedFormula, formulaData.Formula, "Formula map should be correctly populated with 'calc_' prefix")
+
+	expectedParameters := []string{"current_1", "voltage_1", "voltage_2"}
+	for _, param := range expectedParameters {
+		_, exists := formulaData.Parameters[param]
+		require.True(t, exists, "Parameter '%s' should exist in Parameters map", param)
+		require.Nil(t, formulaData.Parameters[param], "Initial value should be nil for '%s'", param)
+	}
+
+	i.Formula = map[string]string{
+		"psu1": "[current_1] * [voltage_1]",
+		"psu2": "[current_1] - [voltage_2]",
+	}
+
+	formulaData, err = i.initialFormulaMap()
+	require.Error(t, err, "initialFormulaMap should produce an error without 'calc_' prefix")
+
+	i.Formula = map[string]string{
+		"calc_psu1": "current_1 * voltage_1",
+	}
+
+	_, err = i.initialFormulaMap()
+	require.Error(t, err, "initialFormulaMap should produce an error for missing brackets in variables")
+}
+
+func TestEvaluateFormulas(t *testing.T) {
+	i := &Ipmi{
+		Formula: map[string]string{
+			"calc_psu1": "100 * 1.5",
+			"calc_psu2": "current_2 - (50 * [current_1]) ",
+		},
+	}
+	formulaData := FormulaData{
+		Formula: i.Formula,
+		Parameters: map[string]*float64{
+			"current_1": new(float64),
+			"current_2": new(float64),
+		},
+	}
+
+	_, err := i.EvaluateFormulas(formulaData)
+	require.NoError(t, err, "EvaluateFormulas should not produce an error with all parameters set")
+
+	*formulaData.Parameters["current_1"] = 2.0
+	*formulaData.Parameters["current_2"] = 100.0
+
+	result, err := i.EvaluateFormulas(formulaData)
+	require.NoError(t, err, "EvaluateFormulas should not produce an error with all parameters set")
+	require.Equal(t, 0.0, result["calc_psu2"], "The result of psu2 should be correctly calculated")
+	fmt.Println("Evaluation results:", formulaData)
+
+	delete(formulaData.Parameters, "current_2")
+	_, err = i.EvaluateFormulas(formulaData)
+	require.Error(t, err, "EvaluateFormulas should produce an error due to missing parameter")
+}
+
+func TestGatherWithoutFormula(t *testing.T) {
+	i := &Ipmi{
+		Servers: []Server{
+			{
+				Connection: "USERID:PASSW0,RD@lan(192.168.1.1)",
+			},
+		},
+		Path:      "ipmitool",
+		Privilege: "USER",
+		Timeout:   config.Duration(time.Second * 5),
+		HexKey:    "1234567F",
+		Formula:   map[string]string{},
+
+		Log: testutil.Logger{},
+	}
+
+	execCommand = fakeExecCommand
+	var acc testutil.Accumulator
+
+	require.NoError(t, i.Init())
+	require.NoError(t, acc.GatherError(i.Gather))
+
+	conn := NewConnection(i.Servers[0].Connection, i.Privilege, i.HexKey)
+	require.EqualValues(t, "USERID", conn.Username)
+	require.EqualValues(t, "lan", conn.Interface)
+	require.EqualValues(t, "1234567F", conn.HexKey)
+}
+
+func assertTagsEqual(t *testing.T, expected, actual map[string]string) {
+	require.Equal(t, len(expected), len(actual), "The number of tags does not match.")
+	for key, val := range expected {
+		actualVal, exists := actual[key]
+		require.True(t, exists, "Expected key '%s' does not exist in the actual map.", key)
+		require.Equal(t, val, actualVal, "The value for key '%s' does not match.", key)
+	}
+}
+
+func TestInsertExtraTagsGroup(t *testing.T) {
+
+	t.Run("WithMatchingName", func(t *testing.T) {
+		tags := map[string]string{
+			"name": "calc_psu1",
+		}
+		extraTags := map[string]interface{}{
+			"rack": "02",
+			"pdu": map[string]interface{}{
+				"#1": []interface{}{"calc_psu1", "calc_psu3"},
+				"#2": []interface{}{"calc_psu2"},
+			},
+		}
+
+		expectedTags := map[string]string{
+			"name": "calc_psu1",
+			"rack": "02",
+			"pdu":  "#1",
+		}
+
+		insertExtraTags(extraTags, tags)
+		assertTagsEqual(t, expectedTags, tags)
+	})
+
+	t.Run("WithNoMatchingName", func(t *testing.T) {
+		tags := map[string]string{
+			"name": "calc_psu3",
+		}
+		extraTags := map[string]interface{}{
+			"rack": "02",
+			"pdu": map[string]interface{}{
+				"#1": []interface{}{"calc_psu1", "calc_psu2"},
+			},
+		}
+
+		expectedTags := map[string]string{
+			"name": "calc_psu3",
+			"rack": "02",
+		}
+
+		insertExtraTags(extraTags, tags)
+		assertTagsEqual(t, expectedTags, tags)
+	})
+
+	t.Run("EmptyTags", func(t *testing.T) {
+		tags := map[string]string{}
+		extraTags := map[string]interface{}{
+			"rack": "02",
+		}
+
+		expectedTags := map[string]string{
+			"rack": "02",
+		}
+
+		insertExtraTags(extraTags, tags)
+		assertTagsEqual(t, expectedTags, tags)
+	})
 }
