@@ -21,3 +21,8 @@ process.yml
 resource.syso
 versioninfo.json
 .uuid
+
+telegraf_debug.exe
+*.log
+*.out
+nul
