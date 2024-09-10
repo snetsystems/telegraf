@@ -189,7 +189,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.32.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.32.0
 	github.com/thomasklein94/packer-plugin-libvirt v0.5.0
-	github.com/tidwall/gjson v1.17.0
+	github.com/tidwall/gjson v1.17.3
 	github.com/tinylib/msgp v1.2.0
 	github.com/urfave/cli/v2 v2.27.2
 	github.com/vapourismo/knx-go v0.0.0-20240217175130-922a0d50c241
