@@ -1,4 +1,4 @@
-package ipmi_sensor
+package ipmi_sensor_formula
 
 import (
 	"fmt"

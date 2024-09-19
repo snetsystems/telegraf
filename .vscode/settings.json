@@ -9,11 +9,10 @@
   "editor.wordWrap": "on",
   "files.eol": "\n",
   "go.lintOnSave": "package",
-  "go.lintTool": "golint",
-  "go.autocompleteUnimportedPackages": true,
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--fast"],
   "go.formatTool": "goimports",
   "go.enableCodeLens": {
-    "references": false,
     "runtest": true
   },
   "prettier.singleQuote": true,
