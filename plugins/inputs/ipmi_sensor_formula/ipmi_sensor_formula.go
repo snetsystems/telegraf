@@ -1,5 +1,5 @@
 //go:generate ../../../tools/readme_config_includer/generator
-package ipmi_sensor
+package ipmi_sensor_formula
 
 import (
 	"bufio"
@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Knetic/govaluate"
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/config"
 	"github.com/influxdata/telegraf/internal"
@@ -23,6 +24,8 @@ import (
 	"github.com/influxdata/telegraf/plugins/inputs"
 )
 
+// DO NOT REMOVE THE NEXT TWO LINES! This is required to embed the sampleConfig data.
+//
 //go:embed sample.conf
 var sampleConfig string
 
@@ -35,19 +38,33 @@ var (
 	dcmiPowerReading     = regexp.MustCompile(`^(?P<name>[^|]*)\:(?P<value>.* Watts)?`)
 )
 
+// Ipmi Server configuration
+type Tags map[string]interface{}
+type Server struct {
+	Connection string `toml:"connection"`
+	ExtraTags  Tags   `toml:"extra_tags"`
+}
+type FormulaData struct {
+	Formula    map[string]string
+	Parameters map[string]*float64
+}
+
 // Ipmi stores the configuration values for the ipmi_sensor input plugin
 type Ipmi struct {
-	Path          string          `toml:"path"`
-	Privilege     string          `toml:"privilege"`
-	HexKey        string          `toml:"hex_key"`
-	Servers       []string        `toml:"servers"`
-	Sensors       []string        `toml:"sensors"`
-	Timeout       config.Duration `toml:"timeout"`
-	MetricVersion int             `toml:"metric_version"`
-	UseSudo       bool            `toml:"use_sudo"`
-	UseCache      bool            `toml:"use_cache"`
-	CachePath     string          `toml:"cache_path"`
-	Log           telegraf.Logger `toml:"-"`
+	Path          string
+	Privilege     string
+	HexKey        string   `toml:"hex_key"`
+	Servers       []Server `toml:"servers"`
+	Sensors       []string `toml:"sensors"`
+	Timeout       config.Duration
+	MetricVersion int
+	UseSudo       bool
+	UseCache      bool
+	CachePath     string
+	Formula       map[string]string `toml:"formula"`
+	ExtraTags     []string          `toml:"extra_tags"`
+
+	Log telegraf.Logger `toml:"-"`
 }
 
 const cmd = "ipmitool"
@@ -74,7 +91,6 @@ func (m *Ipmi) Init() error {
 	if err := choice.CheckSlice(m.Sensors, []string{"sdr", "chassis_power_status", "dcmi_power_reading"}); err != nil {
 		return err
 	}
-
 	// Check parameters
 	if m.Path == "" {
 		return fmt.Errorf("no path for %q specified", cmd)
@@ -89,31 +105,31 @@ func (m *Ipmi) Gather(acc telegraf.Accumulator) error {
 		return errors.New("ipmitool not found: verify that ipmitool is installed and that ipmitool is in your PATH")
 	}
 
-	if len(m.Servers) > 0 {
-		wg := sync.WaitGroup{}
-		for _, server := range m.Servers {
-			wg.Add(1)
-			go func(a telegraf.Accumulator, s string) {
-				defer wg.Done()
-				for _, sensor := range m.Sensors {
-					a.AddError(m.parse(a, s, sensor))
-				}
-			}(acc, server)
-		}
-		wg.Wait()
-	} else {
+	if len(m.Servers) < 1 {
 		for _, sensor := range m.Sensors {
-			err := m.parse(acc, "", sensor)
+			err := m.parse(acc, Server{}, sensor)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
+	wg := sync.WaitGroup{}
+	for _, server := range m.Servers {
+		wg.Add(1)
+		go func(a telegraf.Accumulator, s Server) {
+			defer wg.Done()
+			for _, sensor := range m.Sensors {
+				a.AddError(m.parse(a, s, sensor))
+			}
+		}(acc, server)
+	}
+	wg.Wait()
+
 	return nil
 }
 
-func (m *Ipmi) parse(acc telegraf.Accumulator, server string, sensor string) error {
+func (m *Ipmi) parse(acc telegraf.Accumulator, server Server, sensor string) error {
 	var command []string
 	switch sensor {
 	case "sdr":
@@ -128,16 +144,27 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string, sensor string) err
 
 	opts := make([]string, 0)
 	hostname := ""
-	if server != "" {
-		conn := NewConnection(server, m.Privilege, m.HexKey)
+	extraTags := server.ExtraTags
+	serverConn := trimAll(server.Connection)
+	validTagsMap := sliceToMap(m.ExtraTags)
+	formulaData, err := m.initialFormulaMap()
+	if err != nil {
+		return err
+	}
+
+	if err := validateTags(extraTags, validTagsMap); err != nil {
+		return err
+	}
+
+	if serverConn != "" {
+		conn := NewConnection(serverConn, m.Privilege, m.HexKey)
 		hostname = conn.Hostname
 		opts = conn.options()
 	}
-
 	opts = append(opts, command...)
 
 	if m.UseCache {
-		cacheFile := filepath.Join(m.CachePath, server+"_ipmi_cache")
+		cacheFile := filepath.Join(m.CachePath, serverConn+"_ipmi_cache")
 		_, err := os.Stat(cacheFile)
 		if os.IsNotExist(err) {
 			dumpOpts := opts
@@ -176,37 +203,42 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string, sensor string) err
 	switch sensor {
 	case "sdr":
 		if m.MetricVersion == 2 {
-			return m.parseV2(acc, hostname, out, timestamp)
+			return m.parseV2(acc, hostname, extraTags, out, timestamp, formulaData)
 		} else {
-			return m.parseV1(acc, hostname, out, timestamp)
+			return m.parseV1(acc, hostname, extraTags, out, timestamp, formulaData)
 		}
 	case "chassis_power_status":
-		return m.parseChassisPowerStatus(acc, hostname, out, timestamp)
+		return m.parseChassisPowerStatus(acc, hostname, extraTags, out, timestamp)
 	case "dcmi_power_reading":
-		return m.parseDCMIPowerReading(acc, hostname, out, timestamp)
+		return m.parseDCMIPowerReading(acc, hostname, extraTags, out, timestamp)
 	}
-
 	return fmt.Errorf("unknown sensor type %q", sensor)
 }
 
-func (m *Ipmi) parseChassisPowerStatus(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseChassisPowerStatus(acc telegraf.Accumulator, hostname string, extraTags Tags, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Chassis Power is on
 	// Chassis Power is off
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
 	for scanner.Scan() {
 		line := scanner.Text()
+		tags := map[string]string{
+			"name":   "chassis_power_status",
+			"server": hostname,
+		}
+		insertExtraTags(extraTags, tags)
+
 		if strings.Contains(line, "Chassis Power is on") {
-			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 1}, map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
+			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 1.0}, tags, measuredAt)
 		} else if strings.Contains(line, "Chassis Power is off") {
-			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 0}, map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
+			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 0.0}, tags, measuredAt)
 		}
 	}
 
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, extraTags Tags, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Current Power Reading : 0.000
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
@@ -224,6 +256,8 @@ func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, 
 		if hostname != "" {
 			tags["server"] = hostname
 		}
+
+		insertExtraTags(extraTags, tags)
 
 		fields := make(map[string]interface{})
 		valunit := strings.Split(ipmiFields["value"], " ")
@@ -246,24 +280,37 @@ func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, 
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, extraTags Tags, cmdOut []byte, measuredAt time.Time, formulaData FormulaData) error {
 	// each line will look something like
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
-	for scanner.Scan() {
+	for cpuIndex := 0; scanner.Scan(); {
 		ipmiFields := m.extractFieldsFromRegex(reV1ParseLine, scanner.Text())
 		if len(ipmiFields) != 3 {
 			continue
 		}
 
+		tag := transform(ipmiFields["name"])
+
+		if tag == "temp" {
+			cpuIndex++
+			cpuTag := convertToCPUTempTag(ipmiFields, cpuIndex)
+			if cpuTag == tag {
+				cpuIndex--
+			}
+			tag = cpuTag
+		}
+
 		tags := map[string]string{
-			"name": transform(ipmiFields["name"]),
+			"name": tag,
 		}
 
 		// tag the server is we have one
 		if hostname != "" {
 			tags["server"] = hostname
 		}
+
+		insertExtraTags(extraTags, tags)
 
 		fields := make(map[string]interface{})
 		if strings.EqualFold("ok", trim(ipmiFields["status_code"])) {
@@ -297,22 +344,60 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 			fields["value"] = 0.0
 		}
 
+		if _, ok := formulaData.Parameters[tag]; ok {
+			if value, isFloat := fields["value"].(float64); isFloat {
+				formulaData.Parameters[tag] = &value
+			}
+		}
+
+		acc.AddFields("ipmi_sensor", fields, tags, measuredAt)
+	}
+
+	results, err := m.EvaluateFormulas(formulaData)
+	if err != nil {
+		return err
+	}
+	for key, value := range results {
+		tags := map[string]string{
+			"name": key,
+		}
+
+		if hostname != "" {
+			tags["server"] = hostname
+		}
+
+		insertExtraTags(extraTags, tags)
+
+		fields := make(map[string]interface{})
+		fields["status"] = 1
+		fields["value"] = value
 		acc.AddFields("ipmi_sensor", fields, tags, measuredAt)
 	}
 
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, extraTags Tags, cmdOut []byte, measuredAt time.Time, formulaData FormulaData) error {
 	// each line will look something like
 	// CMOS Battery     | 65h | ok  |  7.1 |
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
 	// Drive 0          | A0h | ok  |  7.1 | Drive Present
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
-	for scanner.Scan() {
+	for cpuIndex := 0; scanner.Scan(); {
 		ipmiFields := m.extractFieldsFromRegex(reV2ParseLine, scanner.Text())
 		if len(ipmiFields) < 3 || len(ipmiFields) > 4 {
 			continue
+		}
+
+		tag := transform(ipmiFields["name"])
+
+		if tag == "temp" {
+			cpuIndex++
+			cpuTag := convertToCPUTempTag(ipmiFields, cpuIndex)
+			if cpuTag == tag {
+				cpuIndex--
+			}
+			tag = cpuTag
 		}
 
 		tags := map[string]string{
@@ -323,6 +408,9 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 		if hostname != "" {
 			tags["server"] = hostname
 		}
+
+		insertExtraTags(extraTags, tags)
+
 		tags["entity_id"] = transform(ipmiFields["entity_id"])
 		tags["status_code"] = trim(ipmiFields["status_code"])
 		fields := make(map[string]interface{})
@@ -351,9 +439,35 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 			}
 		}
 
+		if _, ok := formulaData.Parameters[tag]; ok {
+			if value, isFloat := fields["value"].(float64); isFloat {
+				formulaData.Parameters[tag] = &value
+			}
+		}
+
 		acc.AddFields("ipmi_sensor", fields, tags, measuredAt)
 	}
 
+	results, err := m.EvaluateFormulas(formulaData)
+	if err != nil {
+		return err
+	}
+
+	for key, value := range results {
+		tags := map[string]string{
+			"name": key,
+		}
+		// tag the server is we have one
+		if hostname != "" {
+			tags["server"] = hostname
+		}
+
+		insertExtraTags(extraTags, tags)
+		fields := make(map[string]interface{})
+		fields["status"] = 1
+		fields["value"] = value
+		acc.AddFields("ipmi_sensor", fields, tags, measuredAt)
+	}
 	return scanner.Err()
 }
 
@@ -372,6 +486,90 @@ func (m *Ipmi) extractFieldsFromRegex(re *regexp.Regexp, input string) map[strin
 		}
 	}
 	return results
+}
+
+func (m *Ipmi) initialFormulaMap() (FormulaData, error) {
+	formulaMap := FormulaData{
+		Formula:    make(map[string]string),
+		Parameters: make(map[string]*float64),
+	}
+
+	for key, expr := range m.Formula {
+		//  Check if key starts with "calc_" to prevent overwriting of keys with duplicate names
+		if !strings.HasPrefix(key, "calc_") {
+			return FormulaData{}, fmt.Errorf("key '%s' does not start with 'calc_'", key)
+		}
+
+		expression, err := govaluate.NewEvaluableExpression(expr)
+		if err != nil {
+			return FormulaData{}, fmt.Errorf("error creating formula expression for %s: %w", key, err)
+		}
+
+		for _, token := range expression.Tokens() {
+			if token.Kind == govaluate.VARIABLE {
+				expectedVariable := fmt.Sprintf("[%s]", token.Value.(string))
+				if !strings.Contains(expr, expectedVariable) {
+					return FormulaData{}, fmt.Errorf("variable '%s' in key '%s' is not properly wrapped in brackets", token.Value, key)
+				}
+				formulaMap.Parameters[token.Value.(string)] = nil
+			}
+		}
+
+		formulaMap.Formula[key] = expr
+	}
+
+	return formulaMap, nil
+}
+
+func (m *Ipmi) EvaluateFormulas(formulaData FormulaData) (map[string]interface{}, error) {
+	results := make(map[string]interface{})
+
+	for key, formula := range formulaData.Formula {
+		expression, err := govaluate.NewEvaluableExpression(formula)
+		if err != nil {
+			return nil, fmt.Errorf("error creating formula expression for %s: %w", key, err)
+		}
+
+		parameters := make(map[string]interface{})
+		for _, variable := range expression.Vars() {
+			ptr, ok := formulaData.Parameters[variable]
+			if !ok || ptr == nil {
+				return nil, fmt.Errorf("parameter %s not found for formula %s", variable, key)
+			}
+			parameters[variable] = *ptr
+		}
+
+		result, err := expression.Evaluate(parameters)
+		if err != nil {
+			return nil, fmt.Errorf("error evaluating expression for %s: %w", key, err)
+		}
+
+		if floatVal, ok := result.(float64); ok {
+			results[key] = floatVal
+		}
+	}
+
+	return results, nil
+}
+
+func insertExtraTags(extraTags map[string]interface{}, tags map[string]string) {
+	for k, value := range extraTags {
+		switch v := value.(type) {
+		case string:
+			tags[k] = v
+
+		case map[string]interface{}:
+			for tagKey, TagList := range v {
+				if tagValues, ok := TagList.([]interface{}); ok {
+					for _, tagValue := range tagValues {
+						if mappingTagValue, ok := tagValue.(string); ok && mappingTagValue == tags["name"] {
+							tags[k] = tagKey
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // aToFloat converts string representations of numbers to float64 values
@@ -397,14 +595,56 @@ func trim(s string) string {
 	return strings.TrimSpace(s)
 }
 
+func trimAll(s string) string {
+	return strings.ReplaceAll(s, " ", "")
+}
+
 func transform(s string) string {
 	s = trim(s)
 	s = strings.ToLower(s)
 	return strings.ReplaceAll(s, " ", "_")
 }
 
+func sliceToMap(slice []string) map[string]bool {
+	result := make(map[string]bool)
+	for _, item := range slice {
+		result[item] = true
+	}
+	return result
+}
+
+func validateTags(extraTags Tags, validTagsMap map[string]bool) error {
+	if len(extraTags) != len(validTagsMap) {
+		return errors.New("error: The keys in ipmi_sensor.servers.extraTags must exactly match the keys in ipmi_sensor.extraTags")
+	}
+
+	for k := range extraTags {
+		if !validTagsMap[k] {
+			return fmt.Errorf("error: ipmi_sensor.servers.extraTags key '%s' not found in ipmi_sensor.extraTags", k)
+		}
+	}
+	return nil
+}
+
+func convertToCPUTempTag(ipmiFields map[string]string, index int) string {
+	s := transform(ipmiFields["name"])
+	description := ipmiFields["description"]
+
+	if strings.Index(description, " ") > 0 {
+		// split middle column into value and unit
+		valunit := strings.SplitN(description, " ", 2)
+
+		if len(valunit) > 1 {
+			if transform(valunit[1]) == "degrees_c" {
+				return fmt.Sprintf("cpu%d_%s", index, s)
+			}
+		}
+	}
+	return s
+}
+
 func init() {
-	inputs.Add("ipmi_sensor", func() telegraf.Input {
+	inputs.Add("ipmi_sensor_formula", func() telegraf.Input {
 		return &Ipmi{Timeout: config.Duration(20 * time.Second)}
 	})
 }

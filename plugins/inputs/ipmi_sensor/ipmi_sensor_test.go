@@ -16,7 +16,7 @@ import (
 
 func TestGather(t *testing.T) {
 	i := &Ipmi{
-		Servers:   []string{"USERID:PASSW0,RD@lan(192.168.1.1),test-host"},
+		Servers:   []string{"USERID:PASSW0RD@lan(192.168.1.1)"},
 		Path:      "ipmitool",
 		Privilege: "USER",
 		Timeout:   config.Duration(time.Second * 5),
@@ -47,10 +47,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "ambient_temp",
-				"server":   "192.168.1.1",
-				"unit":     "degrees_c",
-				"hostname": "test-host",
+				"name":   "ambient_temp",
+				"server": "192.168.1.1",
+				"unit":   "degrees_c",
 			},
 		},
 		{
@@ -59,10 +58,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "altitude",
-				"server":   "192.168.1.1",
-				"unit":     "feet",
-				"hostname": "test-host",
+				"name":   "altitude",
+				"server": "192.168.1.1",
+				"unit":   "feet",
 			},
 		},
 		{
@@ -71,10 +69,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "avg_power",
-				"server":   "192.168.1.1",
-				"unit":     "watts",
-				"hostname": "test-host",
+				"name":   "avg_power",
+				"server": "192.168.1.1",
+				"unit":   "watts",
 			},
 		},
 		{
@@ -83,10 +80,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "planar_5v",
-				"server":   "192.168.1.1",
-				"unit":     "volts",
-				"hostname": "test-host",
+				"name":   "planar_5v",
+				"server": "192.168.1.1",
+				"unit":   "volts",
 			},
 		},
 		{
@@ -95,10 +91,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "planar_vbat",
-				"server":   "192.168.1.1",
-				"unit":     "volts",
-				"hostname": "test-host",
+				"name":   "planar_vbat",
+				"server": "192.168.1.1",
+				"unit":   "volts",
 			},
 		},
 		{
@@ -107,10 +102,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "fan_1a_tach",
-				"server":   "192.168.1.1",
-				"unit":     "rpm",
-				"hostname": "test-host",
+				"name":   "fan_1a_tach",
+				"server": "192.168.1.1",
+				"unit":   "rpm",
 			},
 		},
 		{
@@ -119,10 +113,9 @@ func TestGather(t *testing.T) {
 				"status": 1,
 			},
 			map[string]string{
-				"name":     "fan_1b_tach",
-				"server":   "192.168.1.1",
-				"unit":     "rpm",
-				"hostname": "test-host",
+				"name":   "fan_1b_tach",
+				"server": "192.168.1.1",
+				"unit":   "rpm",
 			},
 		},
 	}
@@ -394,7 +387,7 @@ OS RealTime Mod  | 0x00              | ok
 
 func TestGatherV2(t *testing.T) {
 	i := &Ipmi{
-		Servers:       []string{"USERID:PASSW0RD@lan(192.168.1.1),test-host"},
+		Servers:       []string{"USERID:PASSW0RD@lan(192.168.1.1)"},
 		Path:          "ipmitool",
 		Privilege:     "USER",
 		Timeout:       config.Duration(time.Second * 5),
@@ -429,7 +422,6 @@ func TestGatherV2(t *testing.T) {
 				"status_code": "ns",
 				"status_desc": "no_reading",
 				"server":      "192.168.1.1",
-				"hostname":    "test-host",
 			},
 		},
 	}
@@ -634,7 +626,6 @@ Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected
 
 func Test_parseV1(t *testing.T) {
 	type args struct {
-		ipmiIP     string
 		hostname   string
 		cmdOut     []byte
 		measuredAt time.Time
@@ -648,7 +639,6 @@ func Test_parseV1(t *testing.T) {
 		{
 			name: "Test correct V1 parsing with hex code",
 			args: args{
-				ipmiIP:     "10.20.2.1",
 				hostname:   "host",
 				measuredAt: time.Now(),
 				cmdOut:     []byte("PS1 Status       | 0x02              | ok"),
@@ -659,7 +649,6 @@ func Test_parseV1(t *testing.T) {
 		{
 			name: "Test correct V1 parsing with value with unit",
 			args: args{
-				ipmiIP:     "10.20.2.1",
 				hostname:   "host",
 				measuredAt: time.Now(),
 				cmdOut:     []byte("Avg Power        | 210 Watts         | ok"),
@@ -677,7 +666,7 @@ func Test_parseV1(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var acc testutil.Accumulator
 
-			if err := ipmi.parseV1(&acc, tt.args.ipmiIP, tt.args.hostname, tt.args.cmdOut, tt.args.measuredAt); (err != nil) != tt.wantErr {
+			if err := ipmi.parseV1(&acc, tt.args.hostname, tt.args.cmdOut, tt.args.measuredAt); (err != nil) != tt.wantErr {
 				t.Errorf("parseV1() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -688,7 +677,6 @@ func Test_parseV1(t *testing.T) {
 
 func Test_parseV2(t *testing.T) {
 	type args struct {
-		ipmiIP     string
 		hostname   string
 		cmdOut     []byte
 		measuredAt time.Time
@@ -702,7 +690,6 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "Test correct V2 parsing with analog value with unit",
 			args: args{
-				ipmiIP:     "10.20.2.1",
 				hostname:   "host",
 				cmdOut:     []byte("Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected"),
 				measuredAt: time.Now(),
@@ -712,8 +699,7 @@ func Test_parseV2(t *testing.T) {
 					map[string]string{
 						"name":        "power_supply_1",
 						"status_code": "ok",
-						"server":      "10.20.2.1",
-						"hostname":    "host",
+						"server":      "host",
 						"entity_id":   "10.1",
 						"unit":        "watts",
 						"status_desc": "presence_detected",
@@ -727,7 +713,6 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "Test correct V2 parsing without analog value",
 			args: args{
-				ipmiIP:     "10.20.2.1",
 				hostname:   "host",
 				cmdOut:     []byte("Intrusion        | 73h | ok  |  7.1 |"),
 				measuredAt: time.Now(),
@@ -737,8 +722,7 @@ func Test_parseV2(t *testing.T) {
 					map[string]string{
 						"name":        "intrusion",
 						"status_code": "ok",
-						"server":      "10.20.2.1",
-						"hostname":    "host",
+						"server":      "host",
 						"entity_id":   "7.1",
 						"status_desc": "ok",
 					},
@@ -751,7 +735,6 @@ func Test_parseV2(t *testing.T) {
 		{
 			name: "parse negative value",
 			args: args{
-				ipmiIP:     "10.20.2.1",
 				hostname:   "host",
 				cmdOut:     []byte("DIMM Thrm Mrgn 1 | B0h | ok  |  8.1 | -55 degrees C"),
 				measuredAt: time.Now(),
@@ -761,8 +744,7 @@ func Test_parseV2(t *testing.T) {
 					map[string]string{
 						"name":        "dimm_thrm_mrgn_1",
 						"status_code": "ok",
-						"server":      "10.20.2.1",
-						"hostname":    "host",
+						"server":      "host",
 						"entity_id":   "8.1",
 						"unit":        "degrees_c",
 					},
@@ -781,12 +763,134 @@ func Test_parseV2(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var acc testutil.Accumulator
-			if err := ipmi.parseV2(&acc, tt.args.ipmiIP, tt.args.hostname, tt.args.cmdOut, tt.args.measuredAt); (err != nil) != tt.wantErr {
+			if err := ipmi.parseV2(&acc, tt.args.hostname, tt.args.cmdOut, tt.args.measuredAt); (err != nil) != tt.wantErr {
 				t.Errorf("parseV2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			testutil.RequireMetricsEqual(t, tt.expected, acc.GetTelegrafMetrics(), testutil.IgnoreTime())
 		})
 	}
+}
+
+func Test_parsePowerStatus(t *testing.T) {
+	type args struct {
+		hostname   string
+		cmdOut     []byte
+		measuredAt time.Time
+	}
+	tests := []struct {
+		name     string
+		args     args
+		expected []telegraf.Metric
+	}{
+		{
+			name: "Test correct parse power status off",
+			args: args{
+				hostname:   "host",
+				cmdOut:     []byte("Chassis Power is off"),
+				measuredAt: time.Now(),
+			},
+			expected: []telegraf.Metric{
+				testutil.MustMetric("ipmi_sensor",
+					map[string]string{
+						"name":   "chassis_power_status",
+						"server": "host",
+					},
+					map[string]interface{}{"value": 0},
+					time.Unix(0, 0),
+				),
+			},
+		},
+		{
+			name: "Test correct parse power status on",
+			args: args{
+				hostname:   "host",
+				cmdOut:     []byte("Chassis Power is on"),
+				measuredAt: time.Now(),
+			},
+			expected: []telegraf.Metric{
+				testutil.MustMetric("ipmi_sensor",
+					map[string]string{
+						"name":   "chassis_power_status",
+						"server": "host",
+					},
+					map[string]interface{}{"value": 1},
+					time.Unix(0, 0),
+				),
+			},
+		},
+	}
+
+	ipmi := &Ipmi{
+		Log: testutil.Logger{},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var acc testutil.Accumulator
+			err := ipmi.parseChassisPowerStatus(&acc, tt.args.hostname, tt.args.cmdOut, tt.args.measuredAt)
+			require.NoError(t, err)
+			testutil.RequireMetricsEqual(t, tt.expected, acc.GetTelegrafMetrics(), testutil.IgnoreTime())
+		})
+	}
+}
+
+func Test_parsePowerReading(t *testing.T) {
+	output := `Instantaneous power reading:                   167 Watts
+Minimum during sampling period:                124 Watts
+Maximum during sampling period:                422 Watts
+Average power reading over sample period:      156 Watts
+IPMI timestamp:                           Mon Aug  1 21:22:51 2016
+Sampling period:                          00699043 Seconds.
+Power reading state is:                   activated
+`
+
+	expected := []telegraf.Metric{
+		testutil.MustMetric("ipmi_sensor",
+			map[string]string{
+				"name":   "instantaneous_power_reading",
+				"server": "host",
+				"unit":   "watts",
+			},
+			map[string]interface{}{"value": float64(167)},
+			time.Unix(0, 0),
+		),
+		testutil.MustMetric("ipmi_sensor",
+			map[string]string{
+				"name":   "minimum_during_sampling_period",
+				"server": "host",
+				"unit":   "watts",
+			},
+			map[string]interface{}{"value": float64(124)},
+			time.Unix(0, 0),
+		),
+		testutil.MustMetric("ipmi_sensor",
+			map[string]string{
+				"name":   "maximum_during_sampling_period",
+				"server": "host",
+				"unit":   "watts",
+			},
+			map[string]interface{}{"value": float64(422)},
+			time.Unix(0, 0),
+		),
+		testutil.MustMetric("ipmi_sensor",
+			map[string]string{
+				"name":   "average_power_reading_over_sample_period",
+				"server": "host",
+				"unit":   "watts",
+			},
+			map[string]interface{}{"value": float64(156)},
+			time.Unix(0, 0),
+		),
+	}
+
+	ipmi := &Ipmi{
+		Log: testutil.Logger{},
+	}
+
+	var acc testutil.Accumulator
+	err := ipmi.parseDCMIPowerReading(&acc, "host", []byte(output), time.Now())
+	require.NoError(t, err)
+	testutil.RequireMetricsEqual(t, expected, acc.GetTelegrafMetrics(), testutil.IgnoreTime())
 }
 
 func TestSanitizeIPMICmd(t *testing.T) {
