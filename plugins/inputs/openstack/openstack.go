@@ -17,31 +17,34 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/schedulerstats"
-	cinder_services "github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/services"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetenants"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/aggregates"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/diagnostics"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/hypervisors"
-	nova_services "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/services"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/projects"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/services"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/agents"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"github.com/gophercloud/gophercloud/openstack/orchestration/v1/stacks"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	volume_quotasets "github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/quotasets"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/schedulerstats"
+	cinder_services "github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/services"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/aggregates"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/diagnostics"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/flavors"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/hypervisors"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/quotasets"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	nova_services "github.com/gophercloud/gophercloud/v2/openstack/compute/v2/services"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/projects"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/services"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/tokens"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/agents"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/quotas"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/networks"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/subnets"
+	"github.com/gophercloud/gophercloud/v2/openstack/orchestration/v1/stacks"
 
 	"github.com/influxdata/telegraf"
 	httpconfig "github.com/influxdata/telegraf/plugins/common/http"
@@ -57,12 +60,6 @@ var (
 	typeStorage = regexp.MustCompile(`_errors$|_read$|_read_req$|_write$|_write_req$`)
 )
 
-// volume is a structure used to unmarshal raw JSON from the API into.
-type volume struct {
-	volumes.Volume
-	volumetenants.VolumeTenantExt
-}
-
 // OpenStack is the main structure associated with a collection instance.
 type OpenStack struct {
 	// Configuration variables
@@ -72,14 +69,16 @@ type OpenStack struct {
 	Username         string          `toml:"username"`
 	Password         string          `toml:"password"`
 	EnabledServices  []string        `toml:"enabled_services"`
-	ServerDiagnotics bool            `toml:"server_diagnotics"`
+	ServerDiagnotics bool            `toml:"server_diagnotics" deprecated:"1.32.0;1.40.0;add 'serverdiagnostics' to 'enabled_services' instead"`
 	OutputSecrets    bool            `toml:"output_secrets"`
 	TagPrefix        string          `toml:"tag_prefix"`
 	TagValue         string          `toml:"tag_value"`
 	HumanReadableTS  bool            `toml:"human_readable_timestamps"`
 	MeasureRequest   bool            `toml:"measure_openstack_requests"`
+	AllTenants       bool            `toml:"all_tenants"`
 	Log              telegraf.Logger `toml:"-"`
 	httpconfig.HTTPClientConfig
+	ProjectID string
 
 	client *http.Client
 
@@ -91,10 +90,9 @@ type OpenStack struct {
 	stack    *gophercloud.ServiceClient
 
 	// Locally cached resources
-	openstackFlavors     map[string]flavors.Flavor
-	openstackHypervisors []hypervisors.Hypervisor
-	openstackProjects    map[string]projects.Project
-	openstackServices    map[string]services.Service
+	openstackFlavors  map[string]flavors.Flavor
+	openstackProjects map[string]projects.Project
+	openstackServices map[string]services.Service
 
 	services map[string]bool
 }
@@ -124,26 +122,29 @@ func (o *OpenStack) Init() error {
 		return errors.New("tag_value option can not be empty string")
 	}
 
+	// For backward compatibility
+	if o.ServerDiagnotics && !slices.Contains(o.EnabledServices, "serverdiagnostics") {
+		o.EnabledServices = append(o.EnabledServices, "serverdiagnostics")
+	}
+
 	// Check the enabled services
 	o.services = make(map[string]bool, len(o.EnabledServices))
 	for _, service := range o.EnabledServices {
 		switch service {
 		case "agents", "aggregates", "cinder_services", "flavors", "hypervisors",
-			"networks", "nova_services", "ports", "projects", "servers", "services",
-			"stacks", "storage_pools", "subnets", "volumes":
+			"networks", "nova_services", "ports", "projects", "servers",
+			"serverdiagnostics", "services", "stacks", "storage_pools",
+			"subnets", "volumes", "compute_quotas", "network_quotas", "volume_quotas":
 			o.services[service] = true
 		default:
 			return fmt.Errorf("invalid service %q", service)
 		}
 	}
+
 	return nil
 }
 
-func (o *OpenStack) Start(_ telegraf.Accumulator) error {
-	o.openstackFlavors = map[string]flavors.Flavor{}
-	o.openstackHypervisors = []hypervisors.Hypervisor{}
-	o.openstackProjects = map[string]projects.Project{}
-
+func (o *OpenStack) Start(telegraf.Accumulator) error {
 	// Authenticate against Keystone and get a token provider
 	provider, err := openstack.NewClient(o.IdentityEndpoint)
 	if err != nil {
@@ -168,7 +169,7 @@ func (o *OpenStack) Start(_ telegraf.Accumulator) error {
 		Password:         o.Password,
 		AllowReauth:      true,
 	}
-	if err := openstack.Authenticate(provider, authOption); err != nil {
+	if err := openstack.Authenticate(ctx, provider, authOption); err != nil {
 		return fmt.Errorf("unable to authenticate OpenStack user: %w", err)
 	}
 
@@ -194,7 +195,7 @@ func (o *OpenStack) Start(_ telegraf.Accumulator) error {
 			o.Log.Warnf("failed to get services from v3 authentication: %v; falling back to services API", err)
 		}
 		// Determine the services available at the endpoint
-		if err := o.availableServices(); err != nil {
+		if err := o.availableServices(ctx); err != nil {
 			return fmt.Errorf("failed to get resource openstack services: %w", err)
 		}
 	}
@@ -235,6 +236,42 @@ func (o *OpenStack) Start(_ telegraf.Accumulator) error {
 		}
 	}
 
+	// Prepare cross-dependency information
+	o.openstackFlavors = map[string]flavors.Flavor{}
+	o.openstackProjects = map[string]projects.Project{}
+	if slices.Contains(o.EnabledServices, "servers") {
+		// We need the flavors to output machine details for servers
+		page, err := flavors.ListDetail(o.compute, nil).AllPages(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to list flavors: %w", err)
+		}
+		extractedflavors, err := flavors.ExtractFlavors(page)
+		if err != nil {
+			return fmt.Errorf("unable to extract flavors: %w", err)
+		}
+		for _, flavor := range extractedflavors {
+			o.openstackFlavors[flavor.ID] = flavor
+		}
+	}
+
+	if slices.Contains(o.EnabledServices, "servers") || slices.Contains(o.EnabledServices, "serverdiagnostics") || !o.AllTenants {
+		// We need the project to deliver a human readable name in servers
+		page, err := projects.ListAvailable(o.identity).AllPages(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to list projects: %w", err)
+		}
+		extractedProjects, err := projects.ExtractProjects(page)
+		if err != nil {
+			return fmt.Errorf("unable to extract projects: %w", err)
+		}
+		for _, project := range extractedProjects {
+			o.openstackProjects[project.ID] = project
+			if !o.AllTenants && project.Name == o.Project {
+				o.ProjectID = project.ID
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -247,26 +284,8 @@ func (o *OpenStack) Stop() {
 // Gather gathers resources from the OpenStack API and accumulates metrics.  This
 // implements the Input interface.
 func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
+	ctx := context.Background()
 	callDuration := make(map[string]interface{}, len(o.services))
-
-	// Prepare the shared resources
-	if o.services["hypervisors"] || o.services["servers"] || o.ServerDiagnotics {
-		start := time.Now()
-		if err := o.gatherHypervisors(); err != nil {
-			acc.AddError(fmt.Errorf("failed to get resource \"hypervisors\": %w", err))
-		}
-		if o.services["hypervisors"] {
-			callDuration["hypervisors"] = time.Since(start).Nanoseconds()
-		}
-	}
-	// Servers were already queried, so use this information
-	if o.services["servers"] || o.ServerDiagnotics {
-		start := time.Now()
-		if err := o.gatherServers(acc); err != nil {
-			return fmt.Errorf("failed to get resource \"servers\": %w", err)
-		}
-		callDuration["servers"] = time.Since(start).Nanoseconds()
-	}
 
 	for service := range o.services {
 		var err error
@@ -275,38 +294,53 @@ func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
 		switch service {
 		case "services":
 			// As Services are already gathered in Init(), using this to accumulate them.
-			o.accumulateServices(acc)
+			for _, service := range o.openstackServices {
+				tags := map[string]string{
+					"name": service.Type,
+				}
+				fields := map[string]interface{}{
+					"service_id":      service.ID,
+					"service_enabled": service.Enabled,
+				}
+				acc.AddFields("openstack_service", fields, tags)
+			}
 			continue
 		case "projects":
-			err = o.gatherProjects(acc)
+			err = o.gatherProjects(ctx, acc)
 		case "hypervisors":
-			// Gathered as part of the shared resource
-			o.accumulateHypervisor(acc)
-			continue
+			err = o.gatherHypervisors(ctx, acc)
 		case "flavors":
-			err = o.gatherFlavors(acc)
-		case "servers":
-			// Gathered as part of the shared resource
+			err = o.gatherFlavors(ctx, acc)
 		case "volumes":
-			err = o.gatherVolumes(acc)
+			err = o.gatherVolumes(ctx, acc)
 		case "storage_pools":
-			err = o.gatherStoragePools(acc)
+			err = o.gatherStoragePools(ctx, acc)
 		case "subnets":
-			err = o.gatherSubnets(acc)
+			err = o.gatherSubnets(ctx, acc)
 		case "ports":
-			err = o.gatherPorts(acc)
+			err = o.gatherPorts(ctx, acc)
 		case "networks":
-			err = o.gatherNetworks(acc)
+			err = o.gatherNetworks(ctx, acc)
 		case "aggregates":
-			err = o.gatherAggregates(acc)
+			err = o.gatherAggregates(ctx, acc)
 		case "nova_services":
-			err = o.gatherNovaServices(acc)
+			err = o.gatherNovaServices(ctx, acc)
 		case "cinder_services":
-			err = o.gatherCinderServices(acc)
+			err = o.gatherCinderServices(ctx, acc)
 		case "agents":
-			err = o.gatherAgents(acc)
+			err = o.gatherAgents(ctx, acc)
+		case "servers":
+			err = o.gatherServers(ctx, acc)
+		case "serverdiagnostics":
+			err = o.gatherServerDiagnostics(ctx, acc)
 		case "stacks":
-			err = o.gatherStacks(acc)
+			err = o.gatherStacks(ctx, acc)
+		case "compute_quotas":
+			err = o.gatherComputeQuotas(ctx, acc)
+		case "network_quotas":
+			err = o.gatherNetworkQuotas(ctx, acc)
+		case "volume_quotas":
+			err = o.gatherVolumeQuotas(ctx, acc)
 		default:
 			return fmt.Errorf("invalid service %q", service)
 		}
@@ -357,8 +391,8 @@ func (o *OpenStack) availableServicesFromAuth(provider *gophercloud.ProviderClie
 }
 
 // availableServices collects the available endpoint services via API
-func (o *OpenStack) availableServices() error {
-	page, err := services.List(o.identity, nil).AllPages()
+func (o *OpenStack) availableServices(ctx context.Context) error {
+	page, err := services.List(o.identity, nil).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list services: %w", err)
 	}
@@ -376,8 +410,8 @@ func (o *OpenStack) availableServices() error {
 }
 
 // gatherStacks collects and accumulates stacks data from the OpenStack API.
-func (o *OpenStack) gatherStacks(acc telegraf.Accumulator) error {
-	page, err := stacks.List(o.stack, &stacks.ListOpts{}).AllPages()
+func (o *OpenStack) gatherStacks(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := stacks.List(o.stack, &stacks.ListOpts{TenantID: o.ProjectID}).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list stacks: %w", err)
 	}
@@ -407,8 +441,8 @@ func (o *OpenStack) gatherStacks(acc telegraf.Accumulator) error {
 }
 
 // gatherNovaServices collects and accumulates nova_services data from the OpenStack API.
-func (o *OpenStack) gatherNovaServices(acc telegraf.Accumulator) error {
-	page, err := nova_services.List(o.compute, &nova_services.ListOpts{}).AllPages()
+func (o *OpenStack) gatherNovaServices(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := nova_services.List(o.compute, nil).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list nova_services: %w", err)
 	}
@@ -437,8 +471,8 @@ func (o *OpenStack) gatherNovaServices(acc telegraf.Accumulator) error {
 }
 
 // gatherCinderServices collects and accumulates cinder_services data from the OpenStack API.
-func (o *OpenStack) gatherCinderServices(acc telegraf.Accumulator) error {
-	page, err := cinder_services.List(o.volume, &cinder_services.ListOpts{}).AllPages()
+func (o *OpenStack) gatherCinderServices(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := cinder_services.List(o.volume, nil).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list cinder_services: %w", err)
 	}
@@ -469,8 +503,14 @@ func (o *OpenStack) gatherCinderServices(acc telegraf.Accumulator) error {
 }
 
 // gatherSubnets collects and accumulates subnets data from the OpenStack API.
-func (o *OpenStack) gatherSubnets(acc telegraf.Accumulator) error {
-	page, err := subnets.List(o.network, &subnets.ListOpts{}).AllPages()
+func (o *OpenStack) gatherSubnets(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *subnets.ListOpts
+
+	// If not all tenants, filter by the specific project ID
+	if !o.AllTenants {
+		listOpts = &subnets.ListOpts{ProjectID: o.ProjectID}
+	}
+	page, err := subnets.List(o.network, listOpts).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list subnets: %w", err)
 	}
@@ -511,8 +551,14 @@ func (o *OpenStack) gatherSubnets(acc telegraf.Accumulator) error {
 }
 
 // gatherPorts collects and accumulates ports data from the OpenStack API.
-func (o *OpenStack) gatherPorts(acc telegraf.Accumulator) error {
-	page, err := ports.List(o.network, &ports.ListOpts{}).AllPages()
+func (o *OpenStack) gatherPorts(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *ports.ListOpts
+
+	// If not all tenants, filter by the specific project ID
+	if !o.AllTenants {
+		listOpts = &ports.ListOpts{ProjectID: o.ProjectID}
+	}
+	page, err := ports.List(o.network, listOpts).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list ports: %w", err)
 	}
@@ -556,8 +602,14 @@ func (o *OpenStack) gatherPorts(acc telegraf.Accumulator) error {
 }
 
 // gatherNetworks collects and accumulates networks data from the OpenStack API.
-func (o *OpenStack) gatherNetworks(acc telegraf.Accumulator) error {
-	page, err := networks.List(o.network, &networks.ListOpts{}).AllPages()
+func (o *OpenStack) gatherNetworks(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *networks.ListOpts
+
+	// If not all tenants, filter by the specific project ID
+	if !o.AllTenants {
+		listOpts = &networks.ListOpts{ProjectID: o.ProjectID}
+	}
+	page, err := networks.List(o.network, listOpts).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list networks: %w", err)
 	}
@@ -598,8 +650,8 @@ func (o *OpenStack) gatherNetworks(acc telegraf.Accumulator) error {
 }
 
 // gatherAgents collects and accumulates agents data from the OpenStack API.
-func (o *OpenStack) gatherAgents(acc telegraf.Accumulator) error {
-	page, err := agents.List(o.network, &agents.ListOpts{}).AllPages()
+func (o *OpenStack) gatherAgents(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := agents.List(o.network, nil).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list neutron agents: %w", err)
 	}
@@ -631,8 +683,8 @@ func (o *OpenStack) gatherAgents(acc telegraf.Accumulator) error {
 }
 
 // gatherAggregates collects and accumulates aggregates data from the OpenStack API.
-func (o *OpenStack) gatherAggregates(acc telegraf.Accumulator) error {
-	page, err := aggregates.List(o.compute).AllPages()
+func (o *OpenStack) gatherAggregates(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := aggregates.List(o.compute).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list aggregates: %w", err)
 	}
@@ -666,8 +718,15 @@ func (o *OpenStack) gatherAggregates(acc telegraf.Accumulator) error {
 }
 
 // gatherProjects collects and accumulates projects data from the OpenStack API.
-func (o *OpenStack) gatherProjects(acc telegraf.Accumulator) error {
-	page, err := projects.List(o.identity, &projects.ListOpts{}).AllPages()
+func (o *OpenStack) gatherProjects(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *projects.ListOpts
+
+	// If not all tenants, filter by the specific project name
+	if !o.AllTenants {
+		listOpts = &projects.ListOpts{Name: o.Project}
+	}
+
+	page, err := projects.List(o.identity, listOpts).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list projects: %w", err)
 	}
@@ -698,8 +757,8 @@ func (o *OpenStack) gatherProjects(acc telegraf.Accumulator) error {
 }
 
 // gatherHypervisors collects and accumulates hypervisors data from the OpenStack API.
-func (o *OpenStack) gatherHypervisors() error {
-	page, err := hypervisors.List(o.compute, hypervisors.ListOpts{}).AllPages()
+func (o *OpenStack) gatherHypervisors(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := hypervisors.List(o.compute, nil).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list hypervisors: %w", err)
 	}
@@ -707,14 +766,51 @@ func (o *OpenStack) gatherHypervisors() error {
 	if err != nil {
 		return fmt.Errorf("unable to extract hypervisors: %w", err)
 	}
-	o.openstackHypervisors = extractedHypervisors
+
+	for _, hypervisor := range extractedHypervisors {
+		tags := map[string]string{
+			"cpu_vendor":              hypervisor.CPUInfo.Vendor,
+			"cpu_arch":                hypervisor.CPUInfo.Arch,
+			"cpu_model":               hypervisor.CPUInfo.Model,
+			"status":                  strings.ToLower(hypervisor.Status),
+			"state":                   hypervisor.State,
+			"hypervisor_hostname":     hypervisor.HypervisorHostname,
+			"hypervisor_type":         hypervisor.HypervisorType,
+			"hypervisor_version":      strconv.Itoa(hypervisor.HypervisorVersion),
+			"service_host":            hypervisor.Service.Host,
+			"service_id":              hypervisor.Service.ID,
+			"service_disabled_reason": hypervisor.Service.DisabledReason,
+		}
+		for _, cpuFeature := range hypervisor.CPUInfo.Features {
+			tags["cpu_feature_"+cpuFeature] = "true"
+		}
+		fields := map[string]interface{}{
+			"id":                   hypervisor.ID,
+			"host_ip":              hypervisor.HostIP,
+			"cpu_topology_sockets": hypervisor.CPUInfo.Topology.Sockets,
+			"cpu_topology_cores":   hypervisor.CPUInfo.Topology.Cores,
+			"cpu_topology_threads": hypervisor.CPUInfo.Topology.Threads,
+			"current_workload":     hypervisor.CurrentWorkload,
+			"disk_available_least": hypervisor.DiskAvailableLeast,
+			"free_disk_gb":         hypervisor.FreeDiskGB,
+			"free_ram_mb":          hypervisor.FreeRamMB,
+			"local_gb":             hypervisor.LocalGB,
+			"local_gb_used":        hypervisor.LocalGBUsed,
+			"memory_mb":            hypervisor.MemoryMB,
+			"memory_mb_used":       hypervisor.MemoryMBUsed,
+			"running_vms":          hypervisor.RunningVMs,
+			"vcpus":                hypervisor.VCPUs,
+			"vcpus_used":           hypervisor.VCPUsUsed,
+		}
+		acc.AddFields("openstack_hypervisor", fields, tags)
+	}
 
 	return nil
 }
 
 // gatherFlavors collects and accumulates flavors data from the OpenStack API.
-func (o *OpenStack) gatherFlavors(acc telegraf.Accumulator) error {
-	page, err := flavors.ListDetail(o.compute, &flavors.ListOpts{}).AllPages()
+func (o *OpenStack) gatherFlavors(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := flavors.ListDetail(o.compute, nil).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list flavors: %w", err)
 	}
@@ -743,16 +839,16 @@ func (o *OpenStack) gatherFlavors(acc telegraf.Accumulator) error {
 }
 
 // gatherVolumes collects and accumulates volumes data from the OpenStack API.
-func (o *OpenStack) gatherVolumes(acc telegraf.Accumulator) error {
-	page, err := volumes.List(o.volume, &volumes.ListOpts{AllTenants: true}).AllPages()
+func (o *OpenStack) gatherVolumes(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := volumes.List(o.volume, &volumes.ListOpts{AllTenants: o.AllTenants, TenantID: o.ProjectID}).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list volumes: %w", err)
 	}
-	v := []volume{}
-	if err := volumes.ExtractVolumesInto(page, &v); err != nil {
+	extractedVolumes, err := volumes.ExtractVolumes(page)
+	if err != nil {
 		return fmt.Errorf("unable to extract volumes: %w", err)
 	}
-	for _, volume := range v {
+	for _, volume := range extractedVolumes {
 		tags := map[string]string{
 			"status":               strings.ToLower(volume.Status),
 			"availability_zone":    volume.AvailabilityZone,
@@ -798,8 +894,8 @@ func (o *OpenStack) gatherVolumes(acc telegraf.Accumulator) error {
 }
 
 // gatherStoragePools collects and accumulates storage pools data from the OpenStack API.
-func (o *OpenStack) gatherStoragePools(acc telegraf.Accumulator) error {
-	results, err := schedulerstats.List(o.volume, &schedulerstats.ListOpts{Detail: true}).AllPages()
+func (o *OpenStack) gatherStoragePools(ctx context.Context, acc telegraf.Accumulator) error {
+	results, err := schedulerstats.List(o.volume, &schedulerstats.ListOpts{Detail: true, TenantID: o.ProjectID}).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list storage pools: %w", err)
 	}
@@ -824,200 +920,393 @@ func (o *OpenStack) gatherStoragePools(acc telegraf.Accumulator) error {
 	return nil
 }
 
-// gatherServers collects servers from the OpenStack API.
-func (o *OpenStack) gatherServers(acc telegraf.Accumulator) error {
-	for _, hypervisor := range o.openstackHypervisors {
-		page, err := servers.List(o.compute, &servers.ListOpts{AllTenants: true, Host: hypervisor.HypervisorHostname}).AllPages()
-		if err != nil {
-			return fmt.Errorf("unable to list servers: %w", err)
+func (o *OpenStack) gatherServers(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := servers.List(o.compute, &servers.ListOpts{AllTenants: o.AllTenants, TenantID: o.ProjectID}).AllPages(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to list servers: %w", err)
+	}
+	extractedServers, err := servers.ExtractServers(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract servers: %w", err)
+	}
+
+	for i := range extractedServers {
+		server := &extractedServers[i]
+
+		// Try derive the associated project
+		project := "unknown"
+		if p, ok := o.openstackProjects[server.TenantID]; ok {
+			project = p.Name
 		}
-		extractedServers, err := servers.ExtractServers(page)
-		if err != nil {
-			return fmt.Errorf("unable to extract servers: %w", err)
+
+		// Try to derive the hostname
+		var hostname string
+		if server.Host != "" {
+			hostname = server.Host
+		} else if server.Hostname != nil && *server.Hostname != "" {
+			hostname = *server.Hostname
+		} else if server.HypervisorHostname != "" {
+			hostname = server.HypervisorHostname
+		} else {
+			hostname = server.HostID
 		}
-		for _, server := range extractedServers {
-			if o.services["servers"] {
-				o.accumulateServer(acc, server, hypervisor.HypervisorHostname)
-			}
-			if o.ServerDiagnotics && server.Status == "ACTIVE" {
-				diagnostic, err := diagnostics.Get(o.compute, server.ID).Extract()
-				if err != nil {
-					acc.AddError(fmt.Errorf("unable to get diagnostics for server %q: %w", server.ID, err))
-					continue
+
+		tags := map[string]string{
+			"tenant_id": server.TenantID,
+			"name":      server.Name,
+			"host_id":   server.HostID,
+			"status":    strings.ToLower(server.Status),
+			"key_name":  server.KeyName,
+			"host_name": hostname,
+			"project":   project,
+		}
+
+		// Extract the flavor details to avoid joins (ignore errors and leave as zero values)
+		var vcpus, ram, disk int
+		if flavorIDInterface, found := server.Flavor["id"]; found {
+			if flavorID, ok := flavorIDInterface.(string); ok {
+				tags["flavor"] = flavorID
+				if flavor, ok := o.openstackFlavors[flavorID]; ok {
+					vcpus = flavor.VCPUs
+					ram = flavor.RAM
+					disk = flavor.Disk
 				}
-				o.accumulateServerDiagnostics(acc, hypervisor.HypervisorHostname, server.ID, diagnostic)
+			}
+		}
+		if imageIDInterface, found := server.Image["id"]; found {
+			if imageID, ok := imageIDInterface.(string); ok {
+				tags["image"] = imageID
+			}
+		}
+		fields := map[string]interface{}{
+			"id":               server.ID,
+			"progress":         server.Progress,
+			"accessIPv4":       server.AccessIPv4,
+			"accessIPv6":       server.AccessIPv6,
+			"addresses":        len(server.Addresses),
+			"security_groups":  len(server.SecurityGroups),
+			"volumes_attached": len(server.AttachedVolumes),
+			"fault_code":       server.Fault.Code,
+			"fault_details":    server.Fault.Details,
+			"fault_message":    server.Fault.Message,
+			"vcpus":            vcpus,
+			"ram_mb":           ram,
+			"disk_gb":          disk,
+			"fault_created":    o.convertTimeFormat(server.Fault.Created),
+			"updated":          o.convertTimeFormat(server.Updated),
+			"created":          o.convertTimeFormat(server.Created),
+		}
+		if o.OutputSecrets {
+			tags["user_id"] = server.UserID
+			fields["adminPass"] = server.AdminPass
+		}
+		if len(server.AttachedVolumes) == 0 {
+			acc.AddFields("openstack_server", fields, tags)
+		} else {
+			for _, AttachedVolume := range server.AttachedVolumes {
+				fields["volume_id"] = AttachedVolume.ID
+				acc.AddFields("openstack_server", fields, tags)
 			}
 		}
 	}
 	return nil
 }
 
-func (o *OpenStack) accumulateHypervisor(acc telegraf.Accumulator) {
-	for _, hypervisor := range o.openstackHypervisors {
-		tags := map[string]string{
-			"cpu_vendor":              hypervisor.CPUInfo.Vendor,
-			"cpu_arch":                hypervisor.CPUInfo.Arch,
-			"cpu_model":               hypervisor.CPUInfo.Model,
-			"status":                  strings.ToLower(hypervisor.Status),
-			"state":                   hypervisor.State,
-			"hypervisor_hostname":     hypervisor.HypervisorHostname,
-			"hypervisor_type":         hypervisor.HypervisorType,
-			"hypervisor_version":      strconv.Itoa(hypervisor.HypervisorVersion),
-			"service_host":            hypervisor.Service.Host,
-			"service_id":              hypervisor.Service.ID,
-			"service_disabled_reason": hypervisor.Service.DisabledReason,
-		}
-		for _, cpuFeature := range hypervisor.CPUInfo.Features {
-			tags["cpu_feature_"+cpuFeature] = "true"
-		}
-		fields := map[string]interface{}{
-			"id":                   hypervisor.ID,
-			"host_ip":              hypervisor.HostIP,
-			"cpu_topology_sockets": hypervisor.CPUInfo.Topology.Sockets,
-			"cpu_topology_cores":   hypervisor.CPUInfo.Topology.Cores,
-			"cpu_topology_threads": hypervisor.CPUInfo.Topology.Threads,
-			"current_workload":     hypervisor.CurrentWorkload,
-			"disk_available_least": hypervisor.DiskAvailableLeast,
-			"free_disk_gb":         hypervisor.FreeDiskGB,
-			"free_ram_mb":          hypervisor.FreeRamMB,
-			"local_gb":             hypervisor.LocalGB,
-			"local_gb_used":        hypervisor.LocalGBUsed,
-			"memory_mb":            hypervisor.MemoryMB,
-			"memory_mb_used":       hypervisor.MemoryMBUsed,
-			"running_vms":          hypervisor.RunningVMs,
-			"vcpus":                hypervisor.VCPUs,
-			"vcpus_used":           hypervisor.VCPUsUsed,
-		}
-		acc.AddFields("openstack_hypervisor", fields, tags)
+func (o *OpenStack) gatherServerDiagnostics(ctx context.Context, acc telegraf.Accumulator) error {
+	page, err := servers.List(o.compute, &servers.ListOpts{AllTenants: o.AllTenants, TenantID: o.ProjectID}).AllPages(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to list servers: %w", err)
 	}
-}
-
-// accumulateServices accumulates statistics of services.
-func (o *OpenStack) accumulateServices(acc telegraf.Accumulator) {
-	for _, service := range o.openstackServices {
-		tags := map[string]string{
-			"name": service.Type,
-		}
-		fields := map[string]interface{}{
-			"service_id":      service.ID,
-			"service_enabled": service.Enabled,
-		}
-		acc.AddFields("openstack_service", fields, tags)
+	extractedServers, err := servers.ExtractServers(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract servers: %w", err)
 	}
-}
 
-// accumulateServer accumulates statistics of a server.
-func (o *OpenStack) accumulateServer(acc telegraf.Accumulator, server servers.Server, hostName string) {
-	tags := map[string]string{}
-	// Extract the flavor details to avoid joins (ignore errors and leave as zero values)
-	var vcpus, ram, disk int
-	if flavorIDInterface, ok := server.Flavor["id"]; ok {
-		if flavorID, ok := flavorIDInterface.(string); ok {
-			tags["flavor"] = flavorID
-			if flavor, ok := o.openstackFlavors[flavorID]; ok {
-				vcpus = flavor.VCPUs
-				ram = flavor.RAM
-				disk = flavor.Disk
+	for i := range extractedServers {
+		server := &extractedServers[i]
+
+		// Try derive the associated project
+		project := "unknown"
+		if p, ok := o.openstackProjects[server.TenantID]; ok {
+			project = p.Name
+		}
+		if server.Status != "ACTIVE" {
+			continue
+		}
+		diagnostic, err := diagnostics.Get(ctx, o.compute, server.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get diagnostics for server %q: %w", server.ID, err))
+			continue
+		}
+
+		portName := make(map[string]bool)
+		storageName := make(map[string]bool)
+		memoryStats := make(map[string]interface{})
+		cpus := make(map[string]interface{})
+		cpuCore := make(map[string]bool)
+		for k, v := range diagnostic {
+			if typePort.MatchString(k) {
+				portName[strings.Split(k, "_")[0]] = true
+			} else if typeCPU.MatchString(k) {
+				cpus[k] = v
+				cpuCore[strings.Split(k, "_")[0]] = true
+			} else if typeStorage.MatchString(k) {
+				storageName[strings.Split(k, "_")[0]] = true
+			} else {
+				memoryStats[k] = v
 			}
 		}
-	}
-	if imageIDInterface, ok := server.Image["id"]; ok {
-		if imageID, ok := imageIDInterface.(string); ok {
-			tags["image"] = imageID
+		nPorts := strconv.Itoa(len(portName))
+		nDisks := strconv.Itoa(len(storageName))
+
+		// Add metrics for disks
+		fields := map[string]interface{}{
+			"memory":         memoryStats["memory"],
+			"memory-actual":  memoryStats["memory-actual"],
+			"memory-rss":     memoryStats["memory-rss"],
+			"memory-swap_in": memoryStats["memory-swap_in"],
+		}
+		for k, v := range cpus {
+			fields[k] = v
+		}
+		cpuTotalTime := float64(0)
+		for key := range cpuCore {
+			cpuTotalTime += diagnostic[key+"_time"].(float64)
+		}
+		fields["cpu_time"] = cpuTotalTime / float64(len(cpuCore))
+		fields["num_cpus"] = len(cpuCore)
+
+		tags := map[string]string{
+			"tenant_id":   server.TenantID,
+			"project":     project,
+			"server_id":   server.ID,
+			"server_name": server.Name,
+		}
+
+		acc.AddFields("openstack_server_diagnostics", fields, tags)
+
+		for key := range storageName {
+			diskFields := map[string]interface{}{
+				"disk_errors":    diagnostic[key+"_errors"],
+				"disk_read":      diagnostic[key+"_read"],
+				"disk_read_req":  diagnostic[key+"_read_req"],
+				"disk_write":     diagnostic[key+"_write"],
+				"disk_write_req": diagnostic[key+"_write_req"],
+			}
+			tags := map[string]string{
+				"tenant_id":   server.TenantID,
+				"project":     project,
+				"server_id":   server.ID,
+				"server_name": server.Name,
+				"no_of_disks": nDisks,
+				"disk_name":   key,
+			}
+			acc.AddFields("openstack_server_diagnostics", diskFields, tags)
+		}
+
+		for key := range portName {
+			portFields := map[string]interface{}{
+				"port_rx":         diagnostic[key+"_rx"],
+				"port_rx_drop":    diagnostic[key+"_rx_drop"],
+				"port_rx_errors":  diagnostic[key+"_rx_errors"],
+				"port_rx_packets": diagnostic[key+"_rx_packets"],
+				"port_tx":         diagnostic[key+"_tx"],
+				"port_tx_drop":    diagnostic[key+"_tx_drop"],
+				"port_tx_errors":  diagnostic[key+"_tx_errors"],
+				"port_tx_packets": diagnostic[key+"_tx_packets"],
+			}
+			tags := map[string]string{
+				"tenant_id":   server.TenantID,
+				"project":     project,
+				"server_id":   server.ID,
+				"server_name": server.Name,
+				"no_of_ports": nPorts,
+				"port_name":   key,
+			}
+			acc.AddFields("openstack_server_diagnostics", portFields, tags)
 		}
 	}
-	// Try derive the associated project
-	project := "unknown"
-	if p, ok := o.openstackProjects[server.TenantID]; ok {
-		project = p.Name
-	}
-	tags["tenant_id"] = server.TenantID
-	tags["name"] = server.Name
-	tags["host_id"] = server.HostID
-	tags["status"] = strings.ToLower(server.Status)
-	tags["key_name"] = server.KeyName
-	tags["host_name"] = hostName
-	tags["project"] = project
-	fields := map[string]interface{}{
-		"id":               server.ID,
-		"progress":         server.Progress,
-		"accessIPv4":       server.AccessIPv4,
-		"accessIPv6":       server.AccessIPv6,
-		"addresses":        len(server.Addresses),
-		"security_groups":  len(server.SecurityGroups),
-		"volumes_attached": len(server.AttachedVolumes),
-		"fault_code":       server.Fault.Code,
-		"fault_details":    server.Fault.Details,
-		"fault_message":    server.Fault.Message,
-		"vcpus":            vcpus,
-		"ram_mb":           ram,
-		"disk_gb":          disk,
-		"fault_created":    o.convertTimeFormat(server.Fault.Created),
-		"updated":          o.convertTimeFormat(server.Updated),
-		"created":          o.convertTimeFormat(server.Created),
-	}
-	if o.OutputSecrets {
-		tags["user_id"] = server.UserID
-		fields["adminPass"] = server.AdminPass
-	}
-	if len(server.AttachedVolumes) == 0 {
-		acc.AddFields("openstack_server", fields, tags)
-	} else {
-		for _, AttachedVolume := range server.AttachedVolumes {
-			fields["volume_id"] = AttachedVolume.ID
-			acc.AddFields("openstack_server", fields, tags)
-		}
-	}
+	return nil
 }
 
-// accumulateServerDiagnostics accumulates statistics from the compute(nova) service.
-// currently only supports 'libvirt' driver.
-func (o *OpenStack) accumulateServerDiagnostics(acc telegraf.Accumulator, _, serverID string, diagnostic map[string]interface{}) {
-	tags := map[string]string{
-		"server_id": serverID,
+// gatherComputeQuotas collects Compute Quotas from the OpenStack API.
+func (o *OpenStack) gatherComputeQuotas(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *projects.ListOpts
+
+	// If not all tenants, filter by the specific project name
+	if !o.AllTenants {
+		listOpts = &projects.ListOpts{Name: o.Project}
 	}
-	fields := map[string]interface{}{}
-	portName := make(map[string]bool)
-	storageName := make(map[string]bool)
-	memoryStats := make(map[string]interface{})
-	for k, v := range diagnostic {
-		if typePort.MatchString(k) {
-			portName[strings.Split(k, "_")[0]] = true
-		} else if typeCPU.MatchString(k) {
-			fields[k] = v
-		} else if typeStorage.MatchString(k) {
-			storageName[strings.Split(k, "_")[0]] = true
-		} else {
-			memoryStats[k] = v
+
+	page, err := projects.List(o.identity, listOpts).AllPages(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to list projects %w", err)
+	}
+
+	extractedProjects, err := projects.ExtractProjects(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract projects %w", err)
+	}
+	for _, project := range extractedProjects {
+		quotaset, err := quotasets.GetDetail(ctx, o.compute, project.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get compute quota for project(%v) %w", project.ID, err))
+			continue
 		}
+
+		tags := map[string]string{
+			"project":      project.ID,
+			"project_name": project.Name,
+		}
+		fields := map[string]interface{}{
+			"fixed_ips_in_use":                   quotaset.FixedIPs.InUse,
+			"floating_ips_in_use":                quotaset.FloatingIPs.InUse,
+			"injected_file_content_bytes_in_use": quotaset.InjectedFileContentBytes.InUse,
+			"injected_file_path_bytes_in_use":    quotaset.InjectedFilePathBytes.InUse,
+			"injected_files_in_use":              quotaset.InjectedFiles.InUse,
+			"key_pairs_in_use":                   quotaset.KeyPairs.InUse,
+			"metadata_items_in_use":              quotaset.MetadataItems.InUse,
+			"ram_in_use":                         quotaset.RAM.InUse,
+			"security_group_rules_in_use":        quotaset.SecurityGroupRules.InUse,
+			"security_groups_in_use":             quotaset.SecurityGroups.InUse,
+			"cores_in_use":                       quotaset.Cores.InUse,
+			"instances_in_use":                   quotaset.Instances.InUse,
+			"server_groups_in_use":               quotaset.ServerGroups.InUse,
+			"server_group_members_in_use":        quotaset.ServerGroupMembers.InUse,
+			"fixed_ips_limit":                    quotaset.FixedIPs.Limit,
+			"floating_ips_limit":                 quotaset.FloatingIPs.Limit,
+			"injected_file_content_bytes_limit":  quotaset.InjectedFileContentBytes.Limit,
+			"injected_file_path_bytes_limit":     quotaset.InjectedFilePathBytes.Limit,
+			"injected_files_limit":               quotaset.InjectedFiles.Limit,
+			"key_pairs_limit":                    quotaset.KeyPairs.Limit,
+			"metadata_items_limit":               quotaset.MetadataItems.Limit,
+			"ram_limit":                          quotaset.RAM.Limit,
+			"security_group_rules_limit":         quotaset.SecurityGroupRules.Limit,
+			"security_groups_limit":              quotaset.SecurityGroups.Limit,
+			"cores_limit":                        quotaset.Cores.Limit,
+			"instances_limit":                    quotaset.Instances.Limit,
+			"server_groups_limit":                quotaset.ServerGroups.Limit,
+			"server_group_members_limit":         quotaset.ServerGroupMembers.Limit,
+		}
+		acc.AddFields("openstack_compute_quota", fields, tags)
 	}
-	fields["memory"] = memoryStats["memory"]
-	fields["memory-actual"] = memoryStats["memory-actual"]
-	fields["memory-rss"] = memoryStats["memory-rss"]
-	fields["memory-swap_in"] = memoryStats["memory-swap_in"]
-	tags["no_of_ports"] = strconv.Itoa(len(portName))
-	tags["no_of_disks"] = strconv.Itoa(len(storageName))
-	for key := range storageName {
-		fields["disk_errors"] = diagnostic[key+"_errors"]
-		fields["disk_read"] = diagnostic[key+"_read"]
-		fields["disk_read_req"] = diagnostic[key+"_read_req"]
-		fields["disk_write"] = diagnostic[key+"_write"]
-		fields["disk_write_req"] = diagnostic[key+"_write_req"]
-		tags["disk_name"] = key
-		acc.AddFields("openstack_server_diagnostics", fields, tags)
+
+	return nil
+}
+
+// gatherNetworkQuotas collects Network Quotas from the OpenStack API.
+func (o *OpenStack) gatherNetworkQuotas(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *projects.ListOpts
+
+	// If not all tenants, filter by the specific project name
+	if !o.AllTenants {
+		listOpts = &projects.ListOpts{Name: o.Project}
 	}
-	for key := range portName {
-		fields["port_rx"] = diagnostic[key+"_rx"]
-		fields["port_rx_drop"] = diagnostic[key+"_rx_drop"]
-		fields["port_rx_errors"] = diagnostic[key+"_rx_errors"]
-		fields["port_rx_packets"] = diagnostic[key+"_rx_packets"]
-		fields["port_tx"] = diagnostic[key+"_tx"]
-		fields["port_tx_drop"] = diagnostic[key+"_tx_drop"]
-		fields["port_tx_errors"] = diagnostic[key+"_tx_errors"]
-		fields["port_tx_packets"] = diagnostic[key+"_tx_packets"]
-		tags["port_name"] = key
-		acc.AddFields("openstack_server_diagnostics", fields, tags)
+
+	page, err := projects.List(o.identity, listOpts).AllPages(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to list projects %w", err)
 	}
+
+	extractedProjects, err := projects.ExtractProjects(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract projects %w", err)
+	}
+	for _, project := range extractedProjects {
+		quota, err := quotas.GetDetail(ctx, o.network, project.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get network quota for project(%v) %w", project.ID, err))
+			continue
+		}
+
+		tags := map[string]string{
+			"project":      project.ID,
+			"project_name": project.Name,
+		}
+		fields := map[string]interface{}{
+			"floatingip_used":           quota.FloatingIP.Used,
+			"network_used":              quota.Network.Used,
+			"port_used":                 quota.Port.Used,
+			"rbac_policy_used":          quota.RBACPolicy.Used,
+			"router_used":               quota.Router.Used,
+			"security_group_used":       quota.SecurityGroup.Used,
+			"security_group_rule_used":  quota.SecurityGroupRule.Used,
+			"subnet_used":               quota.Subnet.Used,
+			"subnetpool_used":           quota.SubnetPool.Used,
+			"trunk_used":                quota.Trunk.Used,
+			"floatingip_limit":          quota.FloatingIP.Limit,
+			"network_limit":             quota.Network.Limit,
+			"port_limit":                quota.Port.Limit,
+			"rbac_policy_limit":         quota.RBACPolicy.Limit,
+			"router_limit":              quota.Router.Limit,
+			"security_group_limit":      quota.SecurityGroup.Limit,
+			"security_group_rule_limit": quota.SecurityGroupRule.Limit,
+			"subnet_limit":              quota.Subnet.Limit,
+			"subnetpool_limit":          quota.SubnetPool.Limit,
+			"trunk_limit":               quota.Trunk.Limit,
+		}
+		acc.AddFields("openstack_network_quota", fields, tags)
+	}
+
+	return nil
+}
+
+// gatherVolumeQuotas collects Volume Quotas from the OpenStack API.
+func (o *OpenStack) gatherVolumeQuotas(ctx context.Context, acc telegraf.Accumulator) error {
+	var listOpts *projects.ListOpts
+
+	// If not all tenants, filter by the specific project name
+	if !o.AllTenants {
+		listOpts = &projects.ListOpts{Name: o.Project}
+	}
+
+	page, err := projects.List(o.identity, listOpts).AllPages(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to list projects %w", err)
+	}
+
+	extractedProjects, err := projects.ExtractProjects(page)
+	if err != nil {
+		return fmt.Errorf("unable to extract projects %w", err)
+	}
+	for _, project := range extractedProjects {
+		quota, err := volume_quotasets.GetUsage(ctx, o.volume, project.ID).Extract()
+		if err != nil {
+			acc.AddError(fmt.Errorf("unable to get volume quota for project(%v) %w", project.ID, err))
+			continue
+		}
+
+		tags := map[string]string{
+			"project":      project.ID,
+			"project_name": project.Name,
+		}
+		fields := map[string]interface{}{
+			"volumes_in_use":                 quota.Volumes.InUse,
+			"snapshots_in_use":               quota.Snapshots.InUse,
+			"gigabytes_in_use":               quota.Gigabytes.InUse,
+			"per_volume_gigabytes_in_use":    quota.PerVolumeGigabytes.InUse,
+			"backups_in_use":                 quota.Backups.InUse,
+			"backup_gigabytes_in_use":        quota.BackupGigabytes.InUse,
+			"groups_in_use":                  quota.Groups.InUse,
+			"volumes_allocated":              quota.Volumes.Allocated,
+			"snapshots_allocated":            quota.Snapshots.Allocated,
+			"gigabytes_allocated":            quota.Gigabytes.Allocated,
+			"per_volume_gigabytes_allocated": quota.PerVolumeGigabytes.Allocated,
+			"backups_allocated":              quota.Backups.Allocated,
+			"backup_gigabytes_allocated":     quota.BackupGigabytes.Allocated,
+			"groups_allocated":               quota.Groups.Allocated,
+			"volumes_limit":                  quota.Volumes.Limit,
+			"snapshots_limit":                quota.Snapshots.Limit,
+			"gigabytes_limit":                quota.Gigabytes.Limit,
+			"per_volume_gigabytes_limit":     quota.PerVolumeGigabytes.Limit,
+			"backups_limit":                  quota.Backups.Limit,
+			"backup_gigabytes_limit":         quota.BackupGigabytes.Limit,
+			"groups_limit":                   quota.Groups.Limit,
+		}
+		acc.AddFields("openstack_volume_quota", fields, tags)
+	}
+
+	return nil
 }
 
 // init registers a callback which creates a new OpenStack input instance.
@@ -1028,6 +1317,7 @@ func init() {
 			Project:   "admin",
 			TagPrefix: "openstack_tag_",
 			TagValue:  "true",
+			// AllTenants: true,
 		}
 	})
 }
