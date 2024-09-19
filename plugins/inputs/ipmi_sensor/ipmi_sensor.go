@@ -125,9 +125,11 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server, sensor string) error {
 	}
 
 	opts := make([]string, 0)
+	ipmiIP := ""
 	hostname := ""
 	if server != "" {
 		conn := newConnection(server, m.Privilege, m.HexKey)
+		ipmiIP = conn.ipmiIP
 		hostname = conn.hostname
 		opts = conn.options()
 	}
@@ -174,19 +176,32 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server, sensor string) error {
 	switch sensor {
 	case "sdr":
 		if m.MetricVersion == 2 {
-			return m.parseV2(acc, hostname, out, timestamp)
+			return m.parseV2(acc, ipmiIP, hostname, out, timestamp)
 		}
-		return m.parseV1(acc, hostname, out, timestamp)
+		return m.parseV1(acc, ipmiIP, hostname, out, timestamp)
 	case "chassis_power_status":
-		return parseChassisPowerStatus(acc, hostname, out, timestamp)
+		return parseChassisPowerStatus(acc, ipmiIP, hostname, out, timestamp)
 	case "dcmi_power_reading":
-		return m.parseDCMIPowerReading(acc, hostname, out, timestamp)
+		return m.parseDCMIPowerReading(acc, ipmiIP, hostname, out, timestamp)
 	}
 
 	return fmt.Errorf("unknown sensor type %q", sensor)
 }
 
-func parseChassisPowerStatus(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func ipmiTags(name, ipmiIP, hostname string) map[string]string {
+	tags := map[string]string{
+		"name": name,
+	}
+	if ipmiIP != "" {
+		tags["server"] = ipmiIP
+	}
+	if hostname != "" {
+		tags["hostname"] = hostname
+	}
+	return tags
+}
+
+func parseChassisPowerStatus(acc telegraf.Accumulator, ipmiIP, hostname string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Chassis Power is on
 	// Chassis Power is off
@@ -194,16 +209,16 @@ func parseChassisPowerStatus(acc telegraf.Accumulator, hostname string, cmdOut [
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "Chassis Power is on") {
-			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 1}, map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
+			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 1}, ipmiTags("chassis_power_status", ipmiIP, hostname), measuredAt)
 		} else if strings.Contains(line, "Chassis Power is off") {
-			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 0}, map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
+			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 0}, ipmiTags("chassis_power_status", ipmiIP, hostname), measuredAt)
 		}
 	}
 
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, ipmiIP, hostname string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Current Power Reading : 0.000
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
@@ -213,14 +228,7 @@ func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, 
 			continue
 		}
 
-		tags := map[string]string{
-			"name": transform(ipmiFields["name"]),
-		}
-
-		// tag the server is we have one
-		if hostname != "" {
-			tags["server"] = hostname
-		}
+		tags := ipmiTags(transform(ipmiFields["name"]), ipmiIP, hostname)
 
 		fields := make(map[string]interface{})
 		valunit := strings.Split(ipmiFields["value"], " ")
@@ -243,7 +251,7 @@ func (m *Ipmi) parseDCMIPowerReading(acc telegraf.Accumulator, hostname string, 
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV1(acc telegraf.Accumulator, ipmiIP, hostname string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// Planar VBAT      | 3.05 Volts        | ok
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
@@ -253,14 +261,7 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 			continue
 		}
 
-		tags := map[string]string{
-			"name": transform(ipmiFields["name"]),
-		}
-
-		// tag the server is we have one
-		if hostname != "" {
-			tags["server"] = hostname
-		}
+		tags := ipmiTags(transform(ipmiFields["name"]), ipmiIP, hostname)
 
 		fields := make(map[string]interface{})
 		if strings.EqualFold("ok", trim(ipmiFields["status_code"])) {
@@ -300,7 +301,7 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 	return scanner.Err()
 }
 
-func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte, measuredAt time.Time) error {
+func (m *Ipmi) parseV2(acc telegraf.Accumulator, ipmiIP, hostname string, cmdOut []byte, measuredAt time.Time) error {
 	// each line will look something like
 	// CMOS Battery     | 65h | ok  |  7.1 |
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
@@ -312,14 +313,7 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, cmdOut []byte,
 			continue
 		}
 
-		tags := map[string]string{
-			"name": transform(ipmiFields["name"]),
-		}
-
-		// tag the server is we have one
-		if hostname != "" {
-			tags["server"] = hostname
-		}
+		tags := ipmiTags(transform(ipmiFields["name"]), ipmiIP, hostname)
 		tags["entity_id"] = transform(ipmiFields["entity_id"])
 		tags["status_code"] = trim(ipmiFields["status_code"])
 		fields := make(map[string]interface{})

@@ -12,9 +12,10 @@ func TestNewConnection(t *testing.T) {
 		con  *connection
 	}{
 		{
-			"USERID:PASSW0RD@lan(192.168.1.1)",
+			"USERID:PASSW0RD@lan(192.168.1.1),host",
 			&connection{
-				hostname:  "192.168.1.1",
+				ipmiIP:    "192.168.1.1",
+				hostname:  "host",
 				username:  "USERID",
 				password:  "PASSW0RD",
 				intf:      "lan",
@@ -23,9 +24,9 @@ func TestNewConnection(t *testing.T) {
 			},
 		},
 		{
-			"USERID:PASS:!@#$%^&*(234)_+W0RD@lan(192.168.1.1)",
+			"USERID:PASS:!@#$%^&*(234)_+W0RD@lan(192.168.1.1),",
 			&connection{
-				hostname:  "192.168.1.1",
+				ipmiIP:    "192.168.1.1",
 				username:  "USERID",
 				password:  "PASS:!@#$%^&*(234)_+W0RD",
 				intf:      "lan",
@@ -37,7 +38,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			"USERID@PASSW0RD@lan(192.168.1.1)",
 			&connection{
-				hostname:  "192.168.1.1",
+				ipmiIP:    "192.168.1.1",
 				username:  "",
 				password:  "",
 				intf:      "lan",
@@ -59,7 +60,7 @@ func TestGetCommandOptions(t *testing.T) {
 	}{
 		{
 			&connection{
-				hostname:  "192.168.1.1",
+				ipmiIP:    "192.168.1.1",
 				username:  "user",
 				password:  "password",
 				intf:      "lan",
@@ -70,7 +71,7 @@ func TestGetCommandOptions(t *testing.T) {
 		},
 		{
 			&connection{
-				hostname:  "192.168.1.1",
+				ipmiIP:    "192.168.1.1",
 				username:  "user",
 				password:  "password",
 				intf:      "lan",
