@@ -18,7 +18,104 @@ var (
 )
 
 var (
+	tanzuProjectResourceKind       = "ResourcePool"
+	tanzuVMResourceKind            = "VirtualMachine"
+	tanzuProjectPropertyConditions = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "CONTAINS", "stringValue": "pjp"}}}
+	tanzuVMPropertyConditions      = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "NOT_CONTAINS", "stringValue": "-control-plane-"}}}
+)
+
+var (
 	vmStatKey = [...]string{"sys|osUptime_latest",
+		"sys|poweredOn",
+		"cpu|usage_average",
+		"cpu|workload",
+		"cpu|iowaitPct",
+		"cpu|peak_vcpu_usage",
+		"cpu|peak_vcpu_ready",
+		"cpu|readyPct",
+		"cpu|costopPct",
+		"cpu|swapwaitPct",
+		"cpu|vcpu_usage_disparity",
+		"cpu|vm_capacity_provisioned",
+		"cpu|effective_limit",
+		"cpu|corecount_provisioned",
+		"cpu|demandPct",
+		"cpu|demandmhz",
+		"cpu|capacity_contentionPct",
+		"cpu|run_summation",
+		"cpu|overlap_summation",
+		"config|hardware|num_Cpu",
+		"config|hardware|disk_Space",
+		"mem-host|workload",
+		"mem|usage_average",
+		"mem|workload",
+		"mem|guest_demand",
+		"mem|swapped_average",
+		"mem|swapoutRate_average",
+		"mem|swapinRate_average",
+		"mem|compressed_average",
+		"mem|guest_provisioned",
+		"mem|overhead_average",
+		"mem|reservation_used",
+		"mem|effective_limit",
+		"diskspace|provisionedSpace",
+		"diskspace|used",
+		"diskspace|snapshot",
+		"diskspace|snapshot|used",
+		"diskspace|notshared",
+		"diskspace|activeNotShared",
+		"diskspace|workload",
+		"guest|cpu_queue",
+		"guest|contextSwapRate_latest",
+		"guest|disk_queue",
+		"guest|used_memory",
+		"guest|mem.free_latest",
+		"guest|mem.physUsable_latest",
+		"guest|mem.needed_latest",
+		"guest|page.outRate_latest",
+		"guest|page.inRate_latest",
+		"guest|page.size_latest",
+		"guest|swap.spaceRemaining_latest",
+		"guest|tools_running_status",
+		"guestfilesystem|capacity_total",
+		"guestfilesystem|freespace_total",
+		"guestfilesystem|usage_total",
+		"guestfilesystem|percentage_total",
+		"net|transmitted_average",
+		"net|received_average",
+		"net|usage_average",
+		"net|droppedTx_summation",
+		"net|broadcastTx_summation",
+		"net|multicastTx_summation",
+		"net|droppedTx_summation_sum",
+		"net|multicastTx_summation_sum",
+		"net|broadcastTx_summation_sum",
+		"storage|totalReadLatency_average",
+		"storage|totalWriteLatency_average",
+		"virtualDisk|read_average",
+		"virtualDisk|write_average",
+		"virtualDisk|totalLatency",
+		"virtualDisk|totalReadLatency_average",
+		"virtualDisk|totalWriteLatency_average",
+		"virtualDisk|numberReadAveraged_average",
+		"virtualDisk|numberWriteAveraged_average",
+		"virtualDisk|commandsAveraged_average",
+		"OnlineCapacityAnalytics|capacityRemainingPercentage",
+		"OnlineCapacityAnalytics|timeRemaining",
+		"OnlineCapacityAnalytics|cpu|capacityRemaining",
+		"OnlineCapacityAnalytics|cpu|recommendedSize",
+		"OnlineCapacityAnalytics|cpu|timeRemaining",
+		"OnlineCapacityAnalytics|mem|capacityRemaining",
+		"OnlineCapacityAnalytics|mem|recommendedSize",
+		"OnlineCapacityAnalytics|mem|timeRemaining",
+		"OnlineCapacityAnalytics|diskspace|capacityRemaining",
+		"OnlineCapacityAnalytics|diskspace|recommendedSize",
+		"OnlineCapacityAnalytics|diskspace|timeRemaining",
+	}
+)
+
+var (
+	tanzuVMStatKey = [...]string{"sys|osUptime_latest",
 		"sys|poweredOn",
 		"cpu|usage_average",
 		"cpu|workload",
@@ -120,9 +217,10 @@ type vROpsToken struct {
 }
 
 type resourceBody struct {
-	ResourceKind   []string `json:"resourceKind"`
-	ResourceState  []string `json:"resourceState"`
-	ResourceStatus []string `json:"resourceStatus"`
+	ResourceKind       []string               `json:"resourceKind"`
+	ResourceState      []string               `json:"resourceState"`
+	ResourceStatus     []string               `json:"resourceStatus"`
+	PropertyConditions map[string]interface{} `json:"propertyConditions"`
 }
 
 type statBody struct {

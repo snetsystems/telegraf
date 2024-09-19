@@ -27,12 +27,18 @@ var sampleConfig string
 
 // vROps is the main structure associated with a collection instance.
 type vROps struct {
-	URL             string   `toml:"url"`
-	Username        string   `toml:"username"`
-	Password        string   `toml:"password"`
-	EnabledServices []string `toml:"enabled_services"`
-	ProjectStatKey  []string `toml:"project_stat_key"`
-	VMStatKey       []string `toml:"vm_stat_key"`
+	URL                            string                 `toml:"url"`
+	Username                       string                 `toml:"username"`
+	Password                       string                 `toml:"password"`
+	EnabledServices                []string               `toml:"enabled_services"`
+	ProjectStatKey                 []string               `toml:"project_stat_key"`
+	VMStatKey                      []string               `toml:"vm_stat_key"`
+	TanzuProjectStatKey            []string               `toml:"tanzu_project_stat_key"`
+	TanzuVMStatKey                 []string               `toml:"tanzu_vm_stat_key"`
+	TanzuProjectResourceKind       string                 `toml:"tanzu_project_resource_kind"`
+	TanzuProjectPropertyConditions map[string]interface{} `toml:"tanzu_project_property_conditions"`
+	TanzuVMResourceKind            string                 `toml:"tanzu_vm_resource_kind"`
+	TanzuVMPropertyConditions      map[string]interface{} `toml:"tanzu_vm_property_conditions"`
 	// bucket -> influx templates
 	Templates []string
 	// MetricSeparator is the separator between parts of the metric name.
@@ -84,8 +90,10 @@ func (o *vROps) Gather(acc telegraf.Accumulator) error {
 	// Gather resources.  Note service harvesting must come first as the other
 	// gatherers are dependant on this information.
 	gatherers := map[string]func(telegraf.Accumulator) error{
-		"projects": o.gatherProject,
-		"vms":      o.gatherVMs,
+		"projects":      o.gatherProject,
+		"vms":           o.gatherVMs,
+		"tanzuProjects": o.gatherTanzuProject,
+		"tanzuVMs":      o.gatherTanzuVMs,
 	}
 
 	callDuration := map[string]interface{}{}
@@ -330,6 +338,202 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 	}
 }
 
+func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
+	for {
+		projects, err := o.getTanzuProjects()
+		if err != nil {
+			return err
+		}
+
+		projectIds := make([]string, 0, len(projects))
+		for project := range projects {
+			projectIds = append(projectIds, project)
+		}
+
+		statReqbody := &statBody{
+			ResourceID:  projectIds,
+			StatKey:     nil,
+			CurrentOnly: true,
+			MaxSamples:  1,
+		}
+
+		statsURL, err := url.Parse(o.URL + apiURL + resourceStats)
+		if err != nil {
+			return err
+		}
+
+		statsReq, err := json.Marshal(statReqbody)
+		if err != nil {
+			return nil
+		}
+
+		reqStats, err := http.NewRequest("POST", statsURL.String(), bytes.NewBuffer(statsReq))
+		if err != nil {
+			return err
+		}
+
+		o.setRequestHeaders(reqStats)
+
+		resStats, err := o.client.Do(reqStats)
+		if err != nil {
+			return err
+		}
+		defer resStats.Body.Close()
+
+		if resStats.StatusCode == 401 {
+			err := o.getvRealizeOpsToken()
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		resourceStats, err := io.ReadAll(resStats.Body)
+		if err != nil {
+			return err
+		}
+
+		var stats statResource
+
+		if err := json.Unmarshal(resourceStats, &stats); err != nil {
+			return err
+		}
+
+		for _, resourceIds := range stats.Values {
+			for _, stat := range resourceIds.StatList.Stat {
+
+				re := regexp.MustCompile(`[:/|\s]`)
+				bucket := re.ReplaceAllString(strings.ReplaceAll(stat.StatKey.Key, " ", ""), ".")
+
+				name, field, tags := o.parseName(bucket)
+
+				measurement := strings.ToLower(name)
+				tags["tenant_id"] = resourceIds.ResourceID
+				tags["tenant_name"] = strings.ReplaceAll(projects[resourceIds.ResourceID], " ", "_")
+
+				fields := make(map[string]interface{})
+				if stat.Data != nil {
+					fields[field] = stat.Data[0]
+				}
+
+				if stat.Values != nil {
+					fields[field] = stat.Values[0]
+				}
+
+				acc.AddFields(strings.Join([]string{"vrops_tanzu_project", measurement}, "_"), fields, tags)
+
+			}
+		}
+
+		return nil
+	}
+}
+
+func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
+	for {
+		projects, err := o.getTanzuProjects()
+		if err != nil {
+			return err
+		}
+
+		vms, err := o.getTanzuVMs(projects)
+		if err != nil {
+			return err
+		}
+
+		vmIds := make([]string, 0, len(vms))
+		for vm := range vms {
+			vmIds = append(vmIds, vm)
+		}
+
+		var statKey []string
+		if o.TanzuVMStatKey != nil {
+			statKey = o.TanzuVMStatKey
+		} else {
+			statKey = tanzuVMStatKey[:]
+		}
+
+		statReqbody := &statBody{
+			ResourceID:  vmIds,
+			StatKey:     statKey,
+			CurrentOnly: true,
+			MaxSamples:  1,
+		}
+
+		statsURL, err := url.Parse(o.URL + apiURL + resourceStats)
+		if err != nil {
+			return err
+		}
+
+		statsReq, err := json.Marshal(statReqbody)
+		if err != nil {
+			return nil
+		}
+
+		reqStats, err := http.NewRequest("POST", statsURL.String(), bytes.NewBuffer(statsReq))
+		if err != nil {
+			return err
+		}
+
+		o.setRequestHeaders(reqStats)
+
+		resStats, err := o.client.Do(reqStats)
+		if err != nil {
+			return err
+		}
+		defer resStats.Body.Close()
+
+		if resStats.StatusCode == 401 {
+			err := o.getvRealizeOpsToken()
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		resourceStats, err := io.ReadAll(resStats.Body)
+		if err != nil {
+			return err
+		}
+
+		var stats statResource
+
+		if err := json.Unmarshal(resourceStats, &stats); err != nil {
+			return err
+		}
+
+		for _, resourceIds := range stats.Values {
+			for _, stat := range resourceIds.StatList.Stat {
+
+				re := regexp.MustCompile(`[:/|\s]`)
+				bucket := re.ReplaceAllString(strings.ReplaceAll(stat.StatKey.Key, " ", ""), ".")
+
+				name, field, tags := o.parseName(bucket)
+
+				measurement := strings.ToLower(name)
+				tags["tenant_id"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["projectId"], " ", "_")
+				tags["tenant_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["projectName"], " ", "_")
+				tags["vm_id"] = resourceIds.ResourceID
+				tags["vm_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["name"], " ", "_")
+
+				fields := make(map[string]interface{})
+				if stat.Data != nil {
+					fields[field] = stat.Data[0]
+				}
+
+				if stat.Values != nil {
+					fields[field] = stat.Values[0]
+				}
+
+				acc.AddFields(strings.Join([]string{"vrops_tanzu_vm", measurement}, "_"), fields, tags)
+
+			}
+		}
+
+		return nil
+	}
+}
+
 func (o *vROps) getProjects() (map[string]string, error) {
 	for {
 		resourceURL, err := url.Parse(o.URL + apiURL + resourceInfo)
@@ -534,6 +738,170 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 				"deploymentName": deployments[resource.Resource.RelatedResources[0]]["name"],
 				"projectId":      deployments[resource.Resource.RelatedResources[0]]["projectId"],
 				"projectName":    deployments[resource.Resource.RelatedResources[0]]["projectName"]}
+		}
+
+		return vms, nil
+	}
+}
+
+func (o *vROps) getTanzuProjects() (map[string]string, error) {
+	for {
+		resourceURL, err := url.Parse(o.URL + apiURL + resourceInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		var resourceKind string
+		if o.TanzuProjectResourceKind != "" {
+			resourceKind = o.TanzuProjectResourceKind
+		} else {
+			resourceKind = tanzuProjectResourceKind
+		}
+
+		propertyConditions := make(map[string]interface{})
+		if o.TanzuProjectPropertyConditions != nil {
+			propertyConditions = o.TanzuProjectPropertyConditions
+		} else {
+			propertyConditions = tanzuProjectPropertyConditions
+		}
+
+		requestbody := &resourceBody{
+			ResourceKind:       []string{resourceKind},
+			ResourceState:      []string{"STARTED"},
+			ResourceStatus:     []string{"DATA_RECEIVING"},
+			PropertyConditions: propertyConditions,
+		}
+
+		body, err := json.Marshal(requestbody)
+		if err != nil {
+			return nil, err
+		}
+
+		request, err := http.NewRequest("POST", resourceURL.String(), bytes.NewBuffer(body))
+		if err != nil {
+			return nil, err
+		}
+
+		o.setRequestHeaders(request)
+
+		response, err := o.client.Do(request)
+		if err != nil {
+			return nil, err
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode == 401 {
+			err := o.getvRealizeOpsToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		resBody, err := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var resources resources
+
+		if err := json.Unmarshal(resBody, &resources); err != nil {
+			return nil, err
+		}
+
+		projects := make(map[string]string)
+
+		for _, resource := range resources.ResourceList {
+			projects[resource.Identifier] = resource.ResourceKey.Name
+		}
+
+		return projects, nil
+	}
+}
+
+func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]string, error) {
+	for {
+		var resourceKind string
+		if o.TanzuVMResourceKind != "" {
+			resourceKind = o.TanzuVMResourceKind
+		} else {
+			resourceKind = tanzuVMResourceKind
+		}
+
+		propertyConditions := make(map[string]interface{})
+		if o.TanzuVMPropertyConditions != nil {
+			propertyConditions = o.TanzuVMPropertyConditions
+		} else {
+			propertyConditions = tanzuVMPropertyConditions
+		}
+
+		resourceQuery := &resourceBody{
+			ResourceKind:       []string{resourceKind},
+			ResourceState:      []string{"STARTED"},
+			ResourceStatus:     []string{"DATA_RECEIVING"},
+			PropertyConditions: propertyConditions,
+		}
+
+		projectIds := make([]string, 0, len(projects))
+		for project := range projects {
+			projectIds = append(projectIds, project)
+		}
+
+		requestBody := &relationshipBody{
+			RelationshipType: "CHILD",
+			ResourceIds:      projectIds,
+			ResourceQuery:    *resourceQuery,
+		}
+
+		bulkURL, err := url.Parse(o.URL + apiURL + resourceBulk)
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := json.Marshal(requestBody)
+		if err != nil {
+			return nil, err
+		}
+
+		request, err := http.NewRequest("POST", bulkURL.String(), bytes.NewBuffer(body))
+		if err != nil {
+			return nil, err
+		}
+
+		o.setRequestHeaders(request)
+
+		response, err := o.client.Do(request)
+		if err != nil {
+			return nil, err
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode == 401 {
+			err := o.getvRealizeOpsToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		resBody, err := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var resources bulkResource
+
+		if err := json.Unmarshal(resBody, &resources); err != nil {
+			return nil, err
+		}
+
+		vms := make(map[string]map[string]string)
+
+		for _, resource := range resources.ResourcesRelations {
+			vms[resource.Resource.Identifier] = map[string]string{
+				"name":        resource.Resource.ResourceKey.Name,
+				"projectId":   resource.Resource.RelatedResources[0],
+				"projectName": projects[resource.Resource.RelatedResources[0]]}
 		}
 
 		return vms, nil
