@@ -57,7 +57,7 @@ plugin ordering. See [CONFIGURATION.md][CONFIGURATION.md] for more details.
   ## Leave them with blank with try to gather everything available.
   ## Values can be - "daemonsets", deployments", "endpoints", "ingress",
   ## "nodes", "persistentvolumes", "persistentvolumeclaims", "pods", "services",
-  ## "statefulsets"
+  ## "statefulsets", "resourcequotas"
   # resource_exclude = [ "deployments", "nodes", "statefulsets" ]
 
   ## Optional Resources to include when gathering
@@ -102,11 +102,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: influx:cluster:viewer
   labels:
-    rbac.authorization.k8s.io/aggregate-view-telegraf: "true"
+    rbac.authorization.k8s.io/aggregate-view-telegraf: 'true'
 rules:
-  - apiGroups: [""]
-    resources: ["persistentvolumes", "nodes"]
-    verbs: ["get", "list"]
+  - apiGroups: ['']
+    resources: ['persistentvolumes', 'nodes']
+    verbs: ['get', 'list']
 
 ---
 kind: ClusterRole
@@ -116,9 +116,9 @@ metadata:
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
-        rbac.authorization.k8s.io/aggregate-view-telegraf: "true"
+        rbac.authorization.k8s.io/aggregate-view-telegraf: 'true'
     - matchLabels:
-        rbac.authorization.k8s.io/aggregate-to-view: "true"
+        rbac.authorization.k8s.io/aggregate-to-view: 'true'
 rules: [] # Rules are automatically filled in by the controller manager.
 ```
 
@@ -164,6 +164,7 @@ tls_key = "/run/telegraf-kubernetes-key"
 ## Metrics
 
 - kubernetes_daemonset
+
   - tags:
     - daemonset_name
     - namespace
@@ -179,6 +180,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - updated_number_scheduled
 
 - kubernetes_deployment
+
   - tags:
     - deployment_name
     - namespace
@@ -189,6 +191,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - created
 
 - kubernetes_endpoints
+
   - tags:
     - endpoint_name
     - namespace
@@ -204,6 +207,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - port
 
 - kubernetes_ingress
+
   - tags:
     - ingress_name
     - namespace
@@ -219,6 +223,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - tls
 
 - kubernetes_node
+
   - tags:
     - node_name
     - status
@@ -238,6 +243,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - node_count
 
 - kubernetes_persistentvolume
+
   - tags:
     - pv_name
     - phase
@@ -246,6 +252,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - phase_type (int, [see below](#pv-phase_type))
 
 - kubernetes_persistentvolumeclaim
+
   - tags:
     - pvc_name
     - namespace
@@ -256,6 +263,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - phase_type (int, [see below](#pvc-phase_type))
 
 - kubernetes_pod_container
+
   - tags:
     - container_name
     - namespace
@@ -279,6 +287,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - status_condition
 
 - kubernetes_service
+
   - tags:
     - service_name
     - namespace
@@ -294,6 +303,7 @@ tls_key = "/run/telegraf-kubernetes-key"
     - target_port
 
 - kubernetes_statefulset
+
   - tags:
     - statefulset_name
     - namespace
@@ -309,20 +319,23 @@ tls_key = "/run/telegraf-kubernetes-key"
     - observed_generation
 
 - kubernetes_resourcequota
+
   - tags:
     - resource
     - namespace
   - fields:
-    - hard_cpu_limits
-    - hard_cpu_requests
-    - hard_memory_limit
-    - hard_memory_requests
-    - hard_pods
-    - used_cpu_limits
-    - used_cpu_requests
-    - used_memory_limits
-    - used_memory_requests
-    - used_pods
+    - hard_cpu_limits (int64, unit: cores, deprecated in 1.31 : use `hard_cpu_cores_limit`->`hard_cpu_limits` instead)
+    - hard_cpu_requests (int64, unit: cores, deprecated in 1.31: use `hard_cpu_cores_request`->`hard_cpu_requests` instead)
+    - hard_memory_limit (int64, unit: bytes, deprecated in 1.31: use `hard_memory_bytes_limit`->`hard_memory_limit` instead)
+    - hard_memory_requests (int64, unit: bytes, deprecated in 1.31: use `hard_memory_bytes_request`->`hard_memory_requests` instead)
+    - hard_storage_request (int64, unit: bytes, deprecated in 1.31: use `hard_storage_bytes_request`->`hard_storage_request` instead)
+    - hard_pods (int64, unit: count)
+    - used_cpu_limits (int64, cores, deprecated in 1.31: use `used_cpu_cores_limit`->`used_cpu_limits` instead)
+    - used_cpu_requests (int64, cores, deprecated in 1.31: use `used_cpu_cores_request`->`used_cpu_requests` instead)
+    - used_memory_limits (int64, unit: bytes, deprecated in 1.31: use `used_memory_bytes_limit`->`used_memory_limits` instead)
+    - used_memory_requests (int64, unit: bytes, deprecated in 1.31: use `used_memory_bytes_request`->`used_memory_requests` instead)
+    - used_storage_request (int64, unit: bytes, deprecated in 1.31: use `used_storage_bytes_request`->`used_storage_request` instead)
+    - used_pods (int64, unit: count)
 
 - kubernetes_certificate
   - tags:
@@ -395,4 +408,5 @@ kubernetes_service,cluster_ip=172.29.61.80,namespace=redis-cache-0001,port_name=
 kubernetes_pod_container,condition=Ready,host=vjain,pod_name=uefi-5997f76f69-xzljt,status=True status_condition=1i 1629177981000000000
 kubernetes_pod_container,container_name=telegraf,namespace=default,node_name=ip-172-17-0-2.internal,node_selector_node-role.kubernetes.io/compute=true,pod_name=tick1,phase=Running,state=running,readiness=ready resource_requests_cpu_units=0.1,resource_limits_memory_bytes=524288000,resource_limits_cpu_units=0.5,restarts_total=0i,state_code=0i,state_reason="",phase_reason="",resource_requests_memory_bytes=524288000 1547597616000000000
 kubernetes_statefulset,namespace=default,selector_select1=s1,statefulset_name=etcd replicas_updated=3i,spec_replicas=3i,observed_generation=1i,created=1544101669000000000i,generation=1i,replicas=3i,replicas_current=3i,replicas_ready=3i 1547597616000000000
+kubernetes_resourcequota,host=vjain,namespace=default,resource=default-resource-quota hard_cpu_limit=16i,hard_cpu_request=16i,hard_memory_limit=34359738368i,hard_memory_request=34359738368i,hard_storage_request=107374182400i,hard_pods=10i,used_cpu_limit=1i,used_cpu_request=1i,used_memory_limit=2684354560i,used_memory_request=2684354560i,used_storage_request=3221225472i,used_pods=0i 1547597616000000000
 ```
