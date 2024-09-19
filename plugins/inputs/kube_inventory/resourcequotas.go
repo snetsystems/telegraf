@@ -47,6 +47,14 @@ func (ki *KubernetesInventory) gatherResourceQuota(r corev1.ResourceQuota, acc t
 			fields[key] = ki.convertQuantity(val.String(), 1)
 		case "pods":
 			fields["hard_pods"] = atoi(val.String())
+		case "requests.storage":
+			key := "hard_storage"
+			if strings.Contains(string(resourceName), "limits") {
+				key = key + "_limits"
+			} else if strings.Contains(string(resourceName), "requests") {
+				key = key + "_requests"
+			}
+			fields[key] = ki.convertQuantity(val.String(), 1)
 		}
 	}
 
@@ -70,6 +78,14 @@ func (ki *KubernetesInventory) gatherResourceQuota(r corev1.ResourceQuota, acc t
 			fields[key] = ki.convertQuantity(val.String(), 1)
 		case "pods":
 			fields["used_pods"] = atoi(val.String())
+		case "requests.storage":
+			key := "used_storage"
+			if strings.Contains(string(resourceName), "limits") {
+				key = key + "_limits"
+			} else if strings.Contains(string(resourceName), "requests") {
+				key = key + "_requests"
+			}
+			fields[key] = ki.convertQuantity(val.String(), 1)
 		}
 	}
 
