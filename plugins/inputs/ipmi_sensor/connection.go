@@ -16,6 +16,7 @@ type Connection struct {
 	Interface string
 	Privilege string
 	HexKey    string
+	IpmiIP    string
 }
 
 func NewConnection(server, privilege, hexKey string) *Connection {
@@ -43,7 +44,7 @@ func NewConnection(server, privilege, hexKey string) *Connection {
 		inx3 := strings.Index(connstr, ")")
 
 		conn.Interface = connstr[0:inx2]
-		conn.Hostname = connstr[inx2+1 : inx3]
+		conn.IpmiIP = connstr[inx2+1 : inx3]
 	}
 
 	return conn
@@ -56,7 +57,7 @@ func (c *Connection) options() []string {
 	}
 
 	options := []string{
-		"-H", c.Hostname,
+		"-H", c.IpmiIP,
 		"-U", c.Username,
 		"-P", c.Password,
 		"-I", intf,
@@ -76,22 +77,22 @@ func (c *Connection) options() []string {
 
 // RemoteIP returns the remote (bmc) IP address of the Connection
 func (c *Connection) RemoteIP() string {
-	if net.ParseIP(c.Hostname) == nil {
-		addrs, err := net.LookupHost(c.Hostname)
+	if net.ParseIP(c.IpmiIP) == nil {
+		addrs, err := net.LookupHost(c.IpmiIP)
 		if err != nil && len(addrs) > 0 {
 			return addrs[0]
 		}
 	}
-	return c.Hostname
+	return c.IpmiIP
 }
 
 // LocalIP returns the local (client) IP address of the Connection
 func (c *Connection) LocalIP() string {
-	conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", c.Hostname, c.Port))
+	conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", c.IpmiIP, c.Port))
 	if err != nil {
 		// don't bother returning an error, since this value will never
 		// make it to the bmc if we can't connect to it.
-		return c.Hostname
+		return c.IpmiIP
 	}
 	_ = conn.Close()
 	//nolint:errcheck // unable to propagate
