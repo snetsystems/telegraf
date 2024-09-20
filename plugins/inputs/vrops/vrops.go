@@ -1,11 +1,13 @@
-//go:generate ../../../tools/readme_config_includer/generator
 // Package vrops implements an vrops input plugin for Telegraf
+//
+//go:generate ../../../tools/readme_config_includer/generator
 package vrops
 
 import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +24,7 @@ import (
 )
 
 // DO NOT REMOVE THE NEXT TWO LINES! This is required to embed the sampleConfig data.
+//
 //go:embed sample.conf
 var sampleConfig string
 
@@ -53,7 +56,7 @@ type vROps struct {
 	client *http.Client
 	Log    telegraf.Logger
 
-	graphiteParser *graphite.GraphiteParser
+	graphiteParser *graphite.Parser
 }
 
 func (*vROps) SampleConfig() string {
@@ -62,11 +65,11 @@ func (*vROps) SampleConfig() string {
 
 func (o *vROps) Init() error {
 	if o.URL == "" {
-		return fmt.Errorf("url cannot be empty")
+		return errors.New("url cannot be empty")
 	}
 
 	if o.Username == "" || o.Password == "" {
-		return fmt.Errorf("username or password can not be empty string")
+		return errors.New("username or password can not be empty string")
 	}
 
 	client, err := o.createHTTPClient()
@@ -102,7 +105,7 @@ func (o *vROps) Gather(acc telegraf.Accumulator) error {
 		start := time.Now()
 		gatherer := gatherers[service]
 		if err := gatherer(acc); err != nil {
-			acc.AddError(fmt.Errorf("failed to get resource %q %v", service, err))
+			acc.AddError(fmt.Errorf("failed to get resource %q %w", service, err))
 		}
 		callDuration[service] = time.Since(start).Nanoseconds()
 	}
@@ -121,14 +124,15 @@ func (o *vROps) parseName(bucket string) (name string, field string, tags map[st
 		} else {
 			metricSeparator = o.MetricSeparator
 		}
-		p, err = graphite.NewGraphiteParser(metricSeparator, o.Templates[:], nil)
-		o.graphiteParser = p
+		p := graphite.Parser{Separator: metricSeparator, Templates: o.Templates[:]}
+		err = p.Init()
+		o.graphiteParser = &p
 	}
 
 	if err == nil {
 		pattern := `\.{2,}`
 		re := regexp.MustCompile(pattern)
-
+		//nolint:errcheck // p.ApplyTemplate does not return an error
 		name, tags, field, _ = p.ApplyTemplate(re.ReplaceAllString(bucket, "."))
 	}
 
@@ -142,13 +146,13 @@ func (o *vROps) gatherProject(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		projectIds := make([]string, 0, len(projects))
+		projectIDs := make([]string, 0, len(projects))
 		for project := range projects {
-			projectIds = append(projectIds, project)
+			projectIDs = append(projectIDs, project)
 		}
 
 		statReqbody := &statBody{
-			ResourceID:  projectIds,
+			ResourceID:  projectIDs,
 			StatKey:     nil,
 			CurrentOnly: true,
 			MaxSamples:  1,
@@ -196,17 +200,16 @@ func (o *vROps) gatherProject(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		for _, resourceIds := range stats.Values {
-			for _, stat := range resourceIds.StatList.Stat {
-
+		for _, resourceIDs := range stats.Values {
+			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
 				bucket := re.ReplaceAllString(strings.ReplaceAll(stat.StatKey.Key, " ", ""), ".")
 
 				name, field, tags := o.parseName(bucket)
 
 				measurement := strings.ToLower(name)
-				tags["tenant_id"] = resourceIds.ResourceID
-				tags["tenant_name"] = strings.ReplaceAll(projects[resourceIds.ResourceID], " ", "_")
+				tags["tenant_id"] = resourceIDs.ResourceID
+				tags["tenant_name"] = strings.ReplaceAll(projects[resourceIDs.ResourceID], " ", "_")
 
 				fields := make(map[string]interface{})
 				if stat.Data != nil {
@@ -218,7 +221,6 @@ func (o *vROps) gatherProject(acc telegraf.Accumulator) error {
 				}
 
 				acc.AddFields(strings.Join([]string{"vrops_project", measurement}, "_"), fields, tags)
-
 			}
 		}
 
@@ -243,9 +245,9 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		vmIds := make([]string, 0, len(vms))
+		vmIDs := make([]string, 0, len(vms))
 		for vm := range vms {
-			vmIds = append(vmIds, vm)
+			vmIDs = append(vmIDs, vm)
 		}
 
 		var statKey []string
@@ -256,7 +258,7 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 		}
 
 		statReqbody := &statBody{
-			ResourceID:  vmIds,
+			ResourceID:  vmIDs,
 			StatKey:     statKey,
 			CurrentOnly: true,
 			MaxSamples:  1,
@@ -304,21 +306,20 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		for _, resourceIds := range stats.Values {
-			for _, stat := range resourceIds.StatList.Stat {
-
+		for _, resourceIDs := range stats.Values {
+			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
 				bucket := re.ReplaceAllString(strings.ReplaceAll(stat.StatKey.Key, " ", ""), ".")
 
 				name, field, tags := o.parseName(bucket)
 
 				measurement := strings.ToLower(name)
-				tags["tenant_id"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["projectId"], " ", "_")
-				tags["tenant_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["projectName"], " ", "_")
-				tags["deployment_id"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["deploymentId"], " ", "_")
-				tags["deployment_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["deploymentName"], " ", "_")
-				tags["vm_id"] = resourceIds.ResourceID
-				tags["vm_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["name"], " ", "_")
+				tags["tenant_id"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["projectId"], " ", "_")
+				tags["tenant_name"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["projectName"], " ", "_")
+				tags["deployment_id"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["deploymentId"], " ", "_")
+				tags["deployment_name"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["deploymentName"], " ", "_")
+				tags["vm_id"] = resourceIDs.ResourceID
+				tags["vm_name"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["name"], " ", "_")
 
 				fields := make(map[string]interface{})
 				if stat.Data != nil {
@@ -330,7 +331,6 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 				}
 
 				acc.AddFields(strings.Join([]string{"vrops_vm", measurement}, "_"), fields, tags)
-
 			}
 		}
 
@@ -345,13 +345,13 @@ func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		projectIds := make([]string, 0, len(projects))
+		projectIDs := make([]string, 0, len(projects))
 		for project := range projects {
-			projectIds = append(projectIds, project)
+			projectIDs = append(projectIDs, project)
 		}
 
 		statReqbody := &statBody{
-			ResourceID:  projectIds,
+			ResourceID:  projectIDs,
 			StatKey:     nil,
 			CurrentOnly: true,
 			MaxSamples:  1,
@@ -399,17 +399,16 @@ func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		for _, resourceIds := range stats.Values {
-			for _, stat := range resourceIds.StatList.Stat {
-
+		for _, resourceIDs := range stats.Values {
+			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
 				bucket := re.ReplaceAllString(strings.ReplaceAll(stat.StatKey.Key, " ", ""), ".")
 
 				name, field, tags := o.parseName(bucket)
 
 				measurement := strings.ToLower(name)
-				tags["tenant_id"] = resourceIds.ResourceID
-				tags["tenant_name"] = strings.ReplaceAll(projects[resourceIds.ResourceID], " ", "_")
+				tags["tenant_id"] = resourceIDs.ResourceID
+				tags["tenant_name"] = strings.ReplaceAll(projects[resourceIDs.ResourceID], " ", "_")
 
 				fields := make(map[string]interface{})
 				if stat.Data != nil {
@@ -421,7 +420,6 @@ func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 				}
 
 				acc.AddFields(strings.Join([]string{"vrops_tanzu_project", measurement}, "_"), fields, tags)
-
 			}
 		}
 
@@ -441,9 +439,9 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		vmIds := make([]string, 0, len(vms))
+		vmIDs := make([]string, 0, len(vms))
 		for vm := range vms {
-			vmIds = append(vmIds, vm)
+			vmIDs = append(vmIDs, vm)
 		}
 
 		var statKey []string
@@ -454,7 +452,7 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 		}
 
 		statReqbody := &statBody{
-			ResourceID:  vmIds,
+			ResourceID:  vmIDs,
 			StatKey:     statKey,
 			CurrentOnly: true,
 			MaxSamples:  1,
@@ -502,19 +500,18 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 			return err
 		}
 
-		for _, resourceIds := range stats.Values {
-			for _, stat := range resourceIds.StatList.Stat {
-
+		for _, resourceIDs := range stats.Values {
+			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
 				bucket := re.ReplaceAllString(strings.ReplaceAll(stat.StatKey.Key, " ", ""), ".")
 
 				name, field, tags := o.parseName(bucket)
 
 				measurement := strings.ToLower(name)
-				tags["tenant_id"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["projectId"], " ", "_")
-				tags["tenant_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["projectName"], " ", "_")
-				tags["vm_id"] = resourceIds.ResourceID
-				tags["vm_name"] = strings.ReplaceAll(vms[resourceIds.ResourceID]["name"], " ", "_")
+				tags["tenant_id"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["projectId"], " ", "_")
+				tags["tenant_name"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["projectName"], " ", "_")
+				tags["vm_id"] = resourceIDs.ResourceID
+				tags["vm_name"] = strings.ReplaceAll(vms[resourceIDs.ResourceID]["name"], " ", "_")
 
 				fields := make(map[string]interface{})
 				if stat.Data != nil {
@@ -526,7 +523,6 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 				}
 
 				acc.AddFields(strings.Join([]string{"vrops_tanzu_vm", measurement}, "_"), fields, tags)
-
 			}
 		}
 
@@ -602,14 +598,14 @@ func (o *vROps) getDeployments(projects map[string]string) (map[string]map[strin
 			ResourceStatus: []string{"DATA_RECEIVING"},
 		}
 
-		projectIds := make([]string, 0, len(projects))
+		projectIDs := make([]string, 0, len(projects))
 		for project := range projects {
-			projectIds = append(projectIds, project)
+			projectIDs = append(projectIDs, project)
 		}
 
 		requestbody := &relationshipBody{
 			RelationshipType: "CHILD",
-			ResourceIds:      projectIds,
+			ResourceIDs:      projectIDs,
 			ResourceQuery:    *resourceQuery,
 		}
 
@@ -676,14 +672,14 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 			ResourceStatus: []string{"DATA_RECEIVING"},
 		}
 
-		deploymentIds := make([]string, 0, len(deployments))
+		deploymentIDs := make([]string, 0, len(deployments))
 		for deployment := range deployments {
-			deploymentIds = append(deploymentIds, deployment)
+			deploymentIDs = append(deploymentIDs, deployment)
 		}
 
 		requestBody := &relationshipBody{
 			RelationshipType: "CHILD",
-			ResourceIds:      deploymentIds,
+			ResourceIDs:      deploymentIDs,
 			ResourceQuery:    *resourceQuery,
 		}
 
@@ -758,7 +754,7 @@ func (o *vROps) getTanzuProjects() (map[string]string, error) {
 			resourceKind = tanzuProjectResourceKind
 		}
 
-		propertyConditions := make(map[string]interface{})
+		var propertyConditions map[string]interface{}
 		if o.TanzuProjectPropertyConditions != nil {
 			propertyConditions = o.TanzuProjectPropertyConditions
 		} else {
@@ -842,14 +838,14 @@ func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]s
 			PropertyConditions: propertyConditions,
 		}
 
-		projectIds := make([]string, 0, len(projects))
+		projectIDs := make([]string, 0, len(projects))
 		for project := range projects {
-			projectIds = append(projectIds, project)
+			projectIDs = append(projectIDs, project)
 		}
 
 		requestBody := &relationshipBody{
 			RelationshipType: "CHILD",
-			ResourceIds:      projectIds,
+			ResourceIDs:      projectIDs,
 			ResourceQuery:    *resourceQuery,
 		}
 
