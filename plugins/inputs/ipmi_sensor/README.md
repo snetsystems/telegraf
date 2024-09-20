@@ -63,18 +63,6 @@ See the [CONFIGURATION.md][CONFIGURATION.md] for more details.
   ## Session privilege level
   ## Choose from: CALLBACK, USER, OPERATOR, ADMINISTRATOR
   # privilege = "ADMINISTRATOR"
-  ##
-  ## optionally specify one or more servers via a url matching
-  ## optionally specify customTags tag
-  ##  [username[:password]@][protocol[(address)]],[{customTags}]
-  ##  e.g.
-  ##    root:passwd@lan(127.0.0.1),{'hostname':'example_host', ...}
-  ##
-  ## 'customTags' is an optional tags to identify the server
-  ## if no customTags is entered, the tag will not be generated
-  ## if no servers are specified, local machine sensor stats will be queried
-  ##
-  # v = ["USERID:PASSW0RD@lan(192.168.1.1),{'hostname':'example_host'}"]
 
   ## Timeout
   ## Timeout for the ipmitool command to complete.
