@@ -10,7 +10,7 @@ The VMware vROps plugin uses the vROps API to gather metrics.
 ## Configuration
 
 ```toml @sample.conf
-# Collects performance metrics from vROps(vRealize Operations) services
+# Collects performance metrics from vROps(vRealize Operations Manager) services
 [[inputs.vrops]]
   ## List of vROps URL to be monitored. These three lines must be uncommented
   ## and edited for the plugin to work.
@@ -46,9 +46,9 @@ The VMware vROps plugin uses the vROps API to gather metrics.
     "net|usage_average",
     "virtualDisk|read_average",
     "virtualDisk|write_average",
-    "virtualDisk:Aggregate of all instances|totalLatency",
-    "virtualDisk:Aggregate of all instances|totalReadLatency_average",
-    "virtualDisk:Aggregate of all instances|totalWriteLatency_average",
+    "virtualDisk:Aggregate of all instances|totalLatency",
+    "virtualDisk:Aggregate of all instances|totalReadLatency_average",
+    "virtualDisk:Aggregate of all instances|totalWriteLatency_average",
     ]
 
   ## Tanzu Projects
@@ -58,94 +58,40 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   ## Tanzu VMs
   ## Typical Tanzu VMs Stat metrics (if omitted or empty, all metrics are collected)
   tanzu_vm_stat_key = ["sys|poweredOn",
-    "cpu|usage_average",
-    "cpu|corecount_provisioned",
-    "config|hardware|num_Cpu",
-    "config|hardware|disk_Space",
-    "mem|usage_average",
-    "mem|guest_provisioned",
-    "diskspace|provisionedSpace",
-    "diskspace|used",
-    "guestfilesystem|capacity_total",
-    "guestfilesystem|freespace_total",
-    "guestfilesystem|usage_total",
-    "guestfilesystem|percentage_total",
-    "net|transmitted_average",
-    "net|received_average",
-    "net|usage_average",
-    "virtualDisk|read_average",
-    "virtualDisk|write_average",
-    "virtualDisk|peak_vDisk_iops",
-    "virtualDisk:Aggregate of all instances|totalLatency",
-    "virtualDisk:Aggregate of all instances|totalReadLatency_average",
-    "virtualDisk:Aggregate of all instances|totalWriteLatency_average",
+      "cpu|usage_average",
+      "cpu|corecount_provisioned",
+      "config|hardware|num_Cpu",
+      "config|hardware|disk_Space",
+      "mem|usage_average",
+      "mem|guest_provisioned",
+      "diskspace|provisionedSpace",
+      "diskspace|used",
+      "guestfilesystem|capacity_total",
+      "guestfilesystem|freespace_total",
+      "guestfilesystem|usage_total",
+      "guestfilesystem|percentage_total",
+      "net|transmitted_average",
+      "net|received_average",
+      "net|usage_average",
+      "virtualDisk|read_average",
+      "virtualDisk|write_average",
+      "virtualDisk|peak_vDisk_iops",
+      "virtualDisk:Aggregate of all instances|totalLatency",
+      "virtualDisk:Aggregate of all instances|totalReadLatency_average",
+      "virtualDisk:Aggregate of all instances|totalWriteLatency_average",
     ]
-
-  ## Tanzu Project - Resource Kind keys
-  # tanzu_project_resource_kind = "ResourcePool"
-
-  ## Tanzu VM - Resource Kind keys
-  # tanzu_vm_resource_kind = "VirtualMachine"
-
-  ## Tanzu Project Filter
-  ## Object used to lookup Tanzu Project with various filtering criteria
-  ## Indicates the conjunction of the filtering criteria
-  ## Either all of the filtering criteria apply together (AND operation) or any of the filtering criteria could be applied (OR operation)
-  ## Defaults to OR.
-  # [inputs.vrops.tanzu_project_property_conditions]
-  #   conjunctionOperator="AND"
-
-  ## key* string
-  ## The name of the StatKey or Property to which the condition applies
-  ##
-  ## operator* string
-  ## Comparison operator to use.
-  ## Default value is EXISTS, i.e. checks the existence of stat or property.
-  ## Enum:
-  ## [ EQ, NOT_EQ, LIKE, LT, GT, LT_EQ, GT_EQ, IN, NOT_IN, EXISTS, CONTAINS, STARTS_WITH, ENDS_WITH, NOT_STARTS_WITH, NOT_ENDS_WITH, NOT_CONTAINS, REGEX, NOT_REGEX,   ## NOT_EXISTS, EMPTY, NOT_EMPTY ]
-  ##
-  ## stringValue string
-  ## String value to which we need to compare to
-  #   [[inputs.vrops.tanzu_project_property_conditions.conditions]]
-  #     key = "config|name"
-  #     operator = "CONTAINS"
-  #     stringValue = "pjp"
-
-  ## Tanzu VM Filter
-  ## Object used to lookup Tanzu VM with various filtering criteria
-  ## Indicates the conjunction of the filtering criteria
-  ## Either all of the filtering criteria apply together (AND operation) or any of the filtering criteria could be applied (OR operation)
-  ## Defaults to OR.
-  # [inputs.vrops.tanzu_vm_property_conditions]
-  #   conjunctionOperator="AND"
-
-  ## key* string
-  ## The name of the StatKey or Property to which the condition applies
-  ##
-  ## operator* string
-  ## Comparison operator to use.
-  ## Default value is EXISTS, i.e. checks the existence of stat or property.
-  ## Enum:
-  ## [ EQ, NOT_EQ, LIKE, LT, GT, LT_EQ, GT_EQ, IN, NOT_IN, EXISTS, CONTAINS, STARTS_WITH, ENDS_WITH, NOT_STARTS_WITH, NOT_ENDS_WITH, NOT_CONTAINS, REGEX, NOT_REGEX,   ## NOT_EXISTS, EMPTY, NOT_EMPTY ]
-  ##
-  ## stringValue string
-  ## String value to which we need to compare to
-  #   [[inputs.vrops.tanzu_vm_property_conditions.conditions]]
-  #     key = "config|name"
-  #     operator = "NOT_CONTAINS"
-  #     stringValue = "-control-plane-"
 
   ## Statsd data translation templates, more info can be read here:
   ## https://github.com/influxdata/telegraf/blob/master/docs/TEMPLATE_PATTERN.md
   metric_separator = "_"
   templates = [
       "measurement.field*",
-      "cloudzones.* measurement.cloudzone.cloudzone.field*",
-      "net.*.* measurement.net.field*",
-      "virtualDisk.*.* measurement.net.field*",
-      "virtualDisk.*.*.* measurement.net.net.field*",
-      "guestfilesystem.*.* measurement.device.field*",
-      "guestfilesystem.*.*.* measurement.device.device.field*"
+		  "cloudzones.* measurement.cloudzone.cloudzone.field*",
+		  "net.*.* measurement.net.field*",
+		  "virtualDisk.*.* measurement.device.field*",
+		  "virtualDisk.*.*.* measurement.device.device.field*",
+		  "guestfilesystem.*.* measurement.device.field*",
+		  "guestfilesystem.*.*.* measurement.device.device.field*"
   ]
 
   ## Amount of time allowed to complete the HTTP(s) request.
