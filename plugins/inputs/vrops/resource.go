@@ -1,16 +1,11 @@
-//go:generate ../../../tools/readme_config_includer/generator
 // Package vrops implements an vrops input plugin for Telegraf
+//
+//go:generate ../../../tools/readme_config_includer/generator
 package vrops
 
-import "regexp"
-
 var (
-	typeCloudZones         = regexp.MustCompile("^cloudzones:")
-	typeCloudZonesTagValue = regexp.MustCompile("^cloudzones:(.*?)/Datacenter")
-)
-
-var (
-	apiURL        = "/suite-api/api"
+	apiURL = "/suite-api/api"
+	//nolint:gosec // The string "/auth/token/acquire" is not a credential, it's a path, so the warning is irrelevant.
 	authToken     = "/auth/token/acquire"
 	resourceInfo  = "/resources/query"
 	resourceBulk  = "/resources/bulk/relationships"
@@ -20,8 +15,10 @@ var (
 var (
 	tanzuProjectResourceKind       = "ResourcePool"
 	tanzuVMResourceKind            = "VirtualMachine"
-	tanzuProjectPropertyConditions = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "CONTAINS", "stringValue": "pjp"}}}
-	tanzuVMPropertyConditions      = map[string]interface{}{"conjunctionOperator": "AND", "conditions": []map[string]string{{"key": "config|name", "operator": "NOT_CONTAINS", "stringValue": "-control-plane-"}}}
+	tanzuProjectPropertyConditions = map[string]interface{}{"conjunctionOperator": "AND",
+		"conditions": []map[string]string{{"key": "config|name", "operator": "CONTAINS", "stringValue": "pjp"}}}
+	tanzuVMPropertyConditions = map[string]interface{}{"conjunctionOperator": "AND",
+		"conditions": []map[string]string{{"key": "config|name", "operator": "NOT_CONTAINS", "stringValue": "-control-plane-"}}}
 )
 
 var (
@@ -232,7 +229,7 @@ type statBody struct {
 
 type relationshipBody struct {
 	RelationshipType string       `json:"relationshipType"`
-	ResourceIds      []string     `json:"resourceIds"`
+	ResourceIDs      []string     `json:"resourceIds"`
 	ResourceQuery    resourceBody `json:"resourceQuery"`
 }
 
