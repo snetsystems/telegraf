@@ -124,9 +124,9 @@ func (o *vROps) parseName(bucket string) (name string, field string, tags map[st
 		} else {
 			metricSeparator = o.MetricSeparator
 		}
-		p := graphite.Parser{Separator: metricSeparator, Templates: o.Templates[:]}
+		p = &graphite.Parser{Separator: metricSeparator, Templates: o.Templates[:]}
 		err = p.Init()
-		o.graphiteParser = &p
+		o.graphiteParser = p
 	}
 
 	if err == nil {
