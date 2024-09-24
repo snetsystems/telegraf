@@ -86,12 +86,12 @@ The VMware vROps plugin uses the vROps API to gather metrics.
   metric_separator = "_"
   templates = [
       "measurement.field*",
-		  "cloudzones.* measurement.cloudzone.cloudzone.field*",
-		  "net.*.* measurement.net.field*",
-		  "virtualDisk.*.* measurement.device.field*",
-		  "virtualDisk.*.*.* measurement.device.device.field*",
-		  "guestfilesystem.*.* measurement.device.field*",
-		  "guestfilesystem.*.*.* measurement.device.device.field*"
+      "cloudzones.* measurement.cloudzone.cloudzone.field*",
+      "net.*.* measurement.net.field*",
+      "virtualDisk.*.* measurement.device.field*",
+      "virtualDisk.*.*.* measurement.device.device.field*",
+      "guestfilesystem.*.* measurement.device.field*",
+      "guestfilesystem.*.*.* measurement.device.device.field*"
   ]
 
   ## Amount of time allowed to complete the HTTP(s) request.
