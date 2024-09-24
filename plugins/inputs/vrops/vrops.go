@@ -165,7 +165,7 @@ func (o *vROps) gatherProject(acc telegraf.Accumulator) error {
 
 		statsReq, err := json.Marshal(statReqbody)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		reqStats, err := http.NewRequest("POST", statsURL.String(), bytes.NewBuffer(statsReq))
@@ -177,13 +177,14 @@ func (o *vROps) gatherProject(acc telegraf.Accumulator) error {
 
 		resStats, err := o.client.Do(reqStats)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
-		defer resStats.Body.Close()
 
 		if resStats.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				resStats.Body.Close()
 				return err
 			}
 			continue
@@ -191,15 +192,17 @@ func (o *vROps) gatherProject(acc telegraf.Accumulator) error {
 
 		resourceStats, err := io.ReadAll(resStats.Body)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
 
 		var stats statResource
 
 		if err := json.Unmarshal(resourceStats, &stats); err != nil {
+			resStats.Body.Close()
 			return err
 		}
-
+		resStats.Body.Close()
 		for _, resourceIDs := range stats.Values {
 			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
@@ -271,7 +274,7 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 
 		statsReq, err := json.Marshal(statReqbody)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		reqStats, err := http.NewRequest("POST", statsURL.String(), bytes.NewBuffer(statsReq))
@@ -283,13 +286,14 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 
 		resStats, err := o.client.Do(reqStats)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
-		defer resStats.Body.Close()
 
 		if resStats.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				resStats.Body.Close()
 				return err
 			}
 			continue
@@ -297,15 +301,17 @@ func (o *vROps) gatherVMs(acc telegraf.Accumulator) error {
 
 		resourceStats, err := io.ReadAll(resStats.Body)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
 
 		var stats statResource
 
 		if err := json.Unmarshal(resourceStats, &stats); err != nil {
+			resStats.Body.Close()
 			return err
 		}
-
+		resStats.Body.Close()
 		for _, resourceIDs := range stats.Values {
 			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
@@ -364,7 +370,7 @@ func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 
 		statsReq, err := json.Marshal(statReqbody)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		reqStats, err := http.NewRequest("POST", statsURL.String(), bytes.NewBuffer(statsReq))
@@ -376,13 +382,14 @@ func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 
 		resStats, err := o.client.Do(reqStats)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
-		defer resStats.Body.Close()
 
 		if resStats.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				resStats.Body.Close()
 				return err
 			}
 			continue
@@ -390,15 +397,17 @@ func (o *vROps) gatherTanzuProject(acc telegraf.Accumulator) error {
 
 		resourceStats, err := io.ReadAll(resStats.Body)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
 
 		var stats statResource
 
 		if err := json.Unmarshal(resourceStats, &stats); err != nil {
+			resStats.Body.Close()
 			return err
 		}
-
+		resStats.Body.Close()
 		for _, resourceIDs := range stats.Values {
 			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
@@ -465,7 +474,7 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 
 		statsReq, err := json.Marshal(statReqbody)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		reqStats, err := http.NewRequest("POST", statsURL.String(), bytes.NewBuffer(statsReq))
@@ -477,13 +486,14 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 
 		resStats, err := o.client.Do(reqStats)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
-		defer resStats.Body.Close()
 
 		if resStats.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				resStats.Body.Close()
 				return err
 			}
 			continue
@@ -491,15 +501,17 @@ func (o *vROps) gatherTanzuVMs(acc telegraf.Accumulator) error {
 
 		resourceStats, err := io.ReadAll(resStats.Body)
 		if err != nil {
+			resStats.Body.Close()
 			return err
 		}
 
 		var stats statResource
 
 		if err := json.Unmarshal(resourceStats, &stats); err != nil {
+			resStats.Body.Close()
 			return err
 		}
-
+		resStats.Body.Close()
 		for _, resourceIDs := range stats.Values {
 			for _, stat := range resourceIDs.StatList.Stat {
 				re := regexp.MustCompile(`[:/|\s]`)
@@ -557,13 +569,14 @@ func (o *vROps) getProjects() (map[string]string, error) {
 
 		response, err := o.client.Do(request)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
-		defer response.Body.Close()
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				response.Body.Close()
 				return nil, err
 			}
 			continue
@@ -571,15 +584,17 @@ func (o *vROps) getProjects() (map[string]string, error) {
 
 		resBody, err := io.ReadAll(response.Body)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		var resources resources
 
 		if err := json.Unmarshal(resBody, &resources); err != nil {
+			response.Body.Close()
 			return nil, err
 		}
-
+		response.Body.Close()
 		projects := make(map[string]string)
 
 		for _, resource := range resources.ResourceList {
@@ -630,7 +645,6 @@ func (o *vROps) getDeployments(projects map[string]string) (map[string]map[strin
 		if err != nil {
 			return nil, err
 		}
-		defer response.Body.Close()
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
@@ -650,7 +664,7 @@ func (o *vROps) getDeployments(projects map[string]string) (map[string]map[strin
 		if err := json.Unmarshal(resBody, &resources); err != nil {
 			return nil, err
 		}
-
+		response.Body.Close()
 		deployments := make(map[string]map[string]string)
 
 		for _, resource := range resources.ResourcesRelations {
@@ -704,7 +718,6 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 		if err != nil {
 			return nil, err
 		}
-		defer response.Body.Close()
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
@@ -724,7 +737,7 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 		if err := json.Unmarshal(resBody, &resources); err != nil {
 			return nil, err
 		}
-
+		response.Body.Close()
 		vms := make(map[string]map[string]string)
 
 		for _, resource := range resources.ResourcesRelations {
@@ -784,7 +797,6 @@ func (o *vROps) getTanzuProjects() (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer response.Body.Close()
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
@@ -804,7 +816,7 @@ func (o *vROps) getTanzuProjects() (map[string]string, error) {
 		if err := json.Unmarshal(resBody, &resources); err != nil {
 			return nil, err
 		}
-
+		response.Body.Close()
 		projects := make(map[string]string)
 
 		for _, resource := range resources.ResourceList {
@@ -824,7 +836,7 @@ func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]s
 			resourceKind = tanzuVMResourceKind
 		}
 
-		propertyConditions := make(map[string]interface{})
+		var propertyConditions map[string]interface{}
 		if o.TanzuVMPropertyConditions != nil {
 			propertyConditions = o.TanzuVMPropertyConditions
 		} else {
@@ -870,7 +882,6 @@ func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]s
 		if err != nil {
 			return nil, err
 		}
-		defer response.Body.Close()
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
@@ -890,7 +901,7 @@ func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]s
 		if err := json.Unmarshal(resBody, &resources); err != nil {
 			return nil, err
 		}
-
+		response.Body.Close()
 		vms := make(map[string]map[string]string)
 
 		for _, resource := range resources.ResourcesRelations {
