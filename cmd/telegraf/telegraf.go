@@ -320,6 +320,7 @@ func (t *Telegraf) runAgent(ctx context.Context, reloadConfig bool) error {
 	c := t.cfg
 	var err error
 	if reloadConfig {
+		config.ResetSecrets()
 		if c, err = t.loadConfiguration(); err != nil {
 			return err
 		}
@@ -402,7 +403,7 @@ func (t *Telegraf) runAgent(ctx context.Context, reloadConfig bool) error {
 			log.Printf("I! Found %d secrets...", c.NumberSecrets)
 			msg := fmt.Sprintf("Insufficient lockable memory %dkb when %dkb is required.", available, required)
 			msg += " Please increase the limit for Telegraf in your Operating System!"
-			log.Printf("W! " + color.RedString(msg))
+			log.Print("W! " + color.RedString(msg))
 		}
 	}
 	ag := agent.NewAgent(c)
