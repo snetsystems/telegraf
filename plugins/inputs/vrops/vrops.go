@@ -643,12 +643,14 @@ func (o *vROps) getDeployments(projects map[string]string) (map[string]map[strin
 
 		response, err := o.client.Do(request)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				response.Body.Close()
 				return nil, err
 			}
 			continue
@@ -656,12 +658,14 @@ func (o *vROps) getDeployments(projects map[string]string) (map[string]map[strin
 
 		resBody, err := io.ReadAll(response.Body)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		var resources bulkResource
 
 		if err := json.Unmarshal(resBody, &resources); err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 		response.Body.Close()
@@ -716,12 +720,14 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 
 		response, err := o.client.Do(request)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				response.Body.Close()
 				return nil, err
 			}
 			continue
@@ -729,12 +735,14 @@ func (o *vROps) getVMs(deployments map[string]map[string]string) (map[string]map
 
 		resBody, err := io.ReadAll(response.Body)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		var resources bulkResource
 
 		if err := json.Unmarshal(resBody, &resources); err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 		response.Body.Close()
@@ -795,12 +803,14 @@ func (o *vROps) getTanzuProjects() (map[string]string, error) {
 
 		response, err := o.client.Do(request)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				response.Body.Close()
 				return nil, err
 			}
 			continue
@@ -808,12 +818,14 @@ func (o *vROps) getTanzuProjects() (map[string]string, error) {
 
 		resBody, err := io.ReadAll(response.Body)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		var resources resources
 
 		if err := json.Unmarshal(resBody, &resources); err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 		response.Body.Close()
@@ -880,12 +892,14 @@ func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]s
 
 		response, err := o.client.Do(request)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		if response.StatusCode == 401 {
 			err := o.getvRealizeOpsToken()
 			if err != nil {
+				response.Body.Close()
 				return nil, err
 			}
 			continue
@@ -893,12 +907,14 @@ func (o *vROps) getTanzuVMs(projects map[string]string) (map[string]map[string]s
 
 		resBody, err := io.ReadAll(response.Body)
 		if err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 
 		var resources bulkResource
 
 		if err := json.Unmarshal(resBody, &resources); err != nil {
+			response.Body.Close()
 			return nil, err
 		}
 		response.Body.Close()
