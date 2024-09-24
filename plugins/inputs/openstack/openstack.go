@@ -78,6 +78,7 @@ type OpenStack struct {
 	Log              telegraf.Logger `toml:"-"`
 	common_http.HTTPClientConfig
 	ProjectID string
+	isError   error
 
 	client *http.Client
 
@@ -106,10 +107,12 @@ func (o *OpenStack) Init() error {
 	}
 	sort.Strings(o.EnabledServices)
 	if o.Username == "" || o.Password == "" {
-		return errors.New("username or password can not be empty string")
+		o.isError = errors.New("username or password can not be empty string")
+		return nil
 	}
 	if o.TagValue == "" {
-		return errors.New("tag_value option can not be empty string")
+		o.isError = errors.New("tag_value option can not be empty string")
+		return nil
 	}
 
 	// For backward compatibility
@@ -127,7 +130,8 @@ func (o *OpenStack) Init() error {
 			"subnets", "volumes", "compute_quotas", "network_quotas", "volume_quotas":
 			o.services[service] = true
 		default:
-			return fmt.Errorf("invalid service %q", service)
+			o.isError = fmt.Errorf("invalid service %q", service)
+			return nil
 		}
 	}
 
@@ -138,13 +142,15 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 	// Authenticate against Keystone and get a token provider
 	provider, err := openstack.NewClient(o.IdentityEndpoint)
 	if err != nil {
-		return fmt.Errorf("unable to create client for OpenStack endpoint: %w", err)
+		o.isError = fmt.Errorf("unable to create client for OpenStack endpoint: %w", err)
+		return nil
 	}
 
 	ctx := context.Background()
 	client, err := o.HTTPClientConfig.CreateClient(ctx, o.Log)
 	if err != nil {
-		return err
+		o.isError = err
+		return nil
 	}
 
 	o.client = client
@@ -160,21 +166,25 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 		AllowReauth:      true,
 	}
 	if err := openstack.Authenticate(ctx, provider, authOption); err != nil {
-		return fmt.Errorf("unable to authenticate OpenStack user: %w", err)
+		o.isError = fmt.Errorf("unable to authenticate OpenStack user: %w", err)
+		return nil
 	}
 
 	// Create required clients and attach to the OpenStack struct
 	o.identity, err = openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{})
 	if err != nil {
-		return fmt.Errorf("unable to create V3 identity client: %w", err)
+		o.isError = fmt.Errorf("unable to create V3 identity client: %w", err)
+		return nil
 	}
 	o.compute, err = openstack.NewComputeV2(provider, gophercloud.EndpointOpts{})
 	if err != nil {
-		return fmt.Errorf("unable to create V2 compute client: %w", err)
+		o.isError = fmt.Errorf("unable to create V2 compute client: %w", err)
+		return nil
 	}
 	o.network, err = openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{})
 	if err != nil {
-		return fmt.Errorf("unable to create V2 network client: %w", err)
+		o.isError = fmt.Errorf("unable to create V2 network client: %w", err)
+		return nil
 	}
 
 	// Check if we got a v3 authentication as we can skip the service listing
@@ -186,7 +196,8 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 		}
 		// Determine the services available at the endpoint
 		if err := o.availableServices(ctx); err != nil {
-			return fmt.Errorf("failed to get resource openstack services: %w", err)
+			o.isError = fmt.Errorf("failed to get resource openstack services: %w", err)
+			return nil
 		}
 	}
 
@@ -198,13 +209,15 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 		case "orchestration":
 			o.stack, err = openstack.NewOrchestrationV1(provider, gophercloud.EndpointOpts{})
 			if err != nil {
-				return fmt.Errorf("unable to create V1 stack client: %w", err)
+				o.isError = fmt.Errorf("unable to create V1 stack client: %w", err)
+				return nil
 			}
 			hasOrchestration = true
 		case "volumev3":
 			o.volume, err = openstack.NewBlockStorageV3(provider, gophercloud.EndpointOpts{})
 			if err != nil {
-				return fmt.Errorf("unable to create V3 volume client: %w", err)
+				o.isError = fmt.Errorf("unable to create V3 volume client: %w", err)
+				return nil
 			}
 			hasBlockStorage = true
 		}
@@ -233,11 +246,13 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 		// We need the flavors to output machine details for servers
 		page, err := flavors.ListDetail(o.compute, nil).AllPages(ctx)
 		if err != nil {
-			return fmt.Errorf("unable to list flavors: %w", err)
+			o.isError = fmt.Errorf("unable to list flavors: %w", err)
+			return nil
 		}
 		extractedflavors, err := flavors.ExtractFlavors(page)
 		if err != nil {
-			return fmt.Errorf("unable to extract flavors: %w", err)
+			o.isError = fmt.Errorf("unable to extract flavors: %w", err)
+			return nil
 		}
 		for _, flavor := range extractedflavors {
 			o.openstackFlavors[flavor.ID] = flavor
@@ -248,11 +263,13 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 		// We need the project to deliver a human readable name in servers
 		page, err := projects.ListAvailable(o.identity).AllPages(ctx)
 		if err != nil {
-			return fmt.Errorf("unable to list projects: %w", err)
+			o.isError = fmt.Errorf("unable to list projects: %w", err)
+			return nil
 		}
 		extractedProjects, err := projects.ExtractProjects(page)
 		if err != nil {
-			return fmt.Errorf("unable to extract projects: %w", err)
+			o.isError = fmt.Errorf("unable to extract projects: %w", err)
+			return nil
 		}
 		for _, project := range extractedProjects {
 			o.openstackProjects[project.ID] = project
@@ -266,6 +283,10 @@ func (o *OpenStack) Start(telegraf.Accumulator) error {
 }
 
 func (o *OpenStack) Gather(acc telegraf.Accumulator) error {
+	if o.isError != nil {
+		return fmt.Errorf("%w", o.isError)
+	}
+
 	ctx := context.Background()
 	callDuration := make(map[string]interface{}, len(o.services))
 
