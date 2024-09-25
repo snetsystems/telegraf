@@ -444,6 +444,17 @@ func GetDefaultConfigPath() ([]string, error) {
 		" in $TELEGRAF_CONFIG_PATH, %s, %s, or %s/*.conf", homefile, etcfile, etcfolder)
 }
 
+// ResetSecrets clears all stored secrets by destroying each one, resetting the
+// secret count to zero, and emptying the unlinkedSecrets list. This is used during
+// Telegraf configuration reloads to remove any old secrets.
+func ResetSecrets() {
+	for _, secret := range unlinkedSecrets {
+		secret.Destroy()
+	}
+	secretCount.Store(0)
+	unlinkedSecrets = nil
+}
+
 // isURL checks if string is valid url
 func isURL(str string) bool {
 	u, err := url.Parse(str)

@@ -44,48 +44,65 @@ See the [CONFIGURATION.md][CONFIGURATION.md] for more details.
 ```toml @sample.conf
 # Read metrics from the bare metal servers via IPMI
 [[inputs.ipmi_sensor]]
-  ## optionally specify the path to the ipmitool executable
+  ## Specify the path to the ipmitool executable
   # path = "/usr/bin/ipmitool"
-  ##
+
+  ## Use sudo
   ## Setting 'use_sudo' to true will make use of sudo to run ipmitool.
   ## Sudo must be configured to allow the telegraf user to run ipmitool
   ## without a password.
   # use_sudo = false
-  ##
-  ## optionally force session privilege level. Can be CALLBACK, USER, OPERATOR, ADMINISTRATOR
-  # privilege = "ADMINISTRATOR"
-  ##
-  ## optionally specify one or more servers via a url matching
+
+  ## Servers
+  ## Specify one or more servers via a url. If no servers are specified, local
+  ## machine sensor stats will be queried. Uses the format:
   ##  [username[:password]@][protocol[(address)]]
-  ##  e.g.
-  ##    root:passwd@lan(127.0.0.1)
-  ##
-  ## if no servers are specified, local machine sensor stats will be queried
-  ##
+  ##  e.g. root:passwd@lan(127.0.0.1)
   # servers = ["USERID:PASSW0RD@lan(192.168.1.1)"]
 
-  ## Recommended: use metric 'interval' that is a multiple of 'timeout' to avoid
-  ## gaps or overlap in pulled data
-  interval = "30s"
+  ## Session privilege level
+  ## Choose from: CALLBACK, USER, OPERATOR, ADMINISTRATOR
+  # privilege = "ADMINISTRATOR"
 
-  ## Timeout for the ipmitool command to complete. Default is 20 seconds.
-  timeout = "20s"
+  ## Timeout
+  ## Timeout for the ipmitool command to complete.
+  # timeout = "20s"
 
-  ## Schema Version: (Optional, defaults to version 1)
-  metric_version = 2
+  ## Metric schema version
+  ## See the plugin readme for more information on schema versioning.
+  # metric_version = 1
 
+  ## Sensors to collect
+  ## Choose from:
+  ##   * sdr: default, collects sensor data records
+  ##   * chassis_power_status: collects the power status of the chassis
+  ##   * dcmi_power_reading: collects the power readings from the Data Center Management Interface
+  # sensors = ["sdr"]
+
+  ## Hex key
   ## Optionally provide the hex key for the IMPI connection.
   # hex_key = ""
 
+  ## Cache
   ## If ipmitool should use a cache
-  ## for me ipmitool runs about 2 to 10 times faster with cache enabled on HP G10 servers (when using ubuntu20.04)
-  ## the cache file may not work well for you if some sensors come up late
+  ## Using a cache can speed up collection times depending on your device.
   # use_cache = false
 
   ## Path to the ipmitools cache file (defaults to OS temp dir)
   ## The provided path must exist and must be writable
   # cache_path = ""
 ```
+
+## Sensors
+
+By default the plugin collects data via the `sdr` command and returns those
+values. However, there are additonal sensor options that be call on:
+
+- `chassis_power_status` - returns 0 or 1 depending on the output of
+  `chassis power status`
+- `dcmi_power_reading` - Returns the watt values from `dcmi power reading`
+
+These sensor options are not affected by the metric version.
 
 ## Metrics
 
@@ -97,6 +114,7 @@ Version 1 schema:
     - unit
     - host
     - server (only when retrieving stats from remote servers)
+    - customTags (only when customTags entered in server IPMI info customTags)
   - fields:
     - status (int, 1=ok status_code/0=anything else)
     - value (float)
@@ -112,13 +130,14 @@ Version 2 schema:
     - unit (only on analog values)
     - host
     - server (only when retrieving stats from remote)
+    - customTags (only when customTags entered in server IPMI info customTags)
   - fields:
     - value (float)
 
 ### Permissions
 
 When gathering from the local system, Telegraf will need permission to the
-ipmi device node.  When using udev you can create the device node giving
+ipmi device node. When using udev you can create the device node giving
 `rw` permissions to the `telegraf` user by adding the following rule to
 `/etc/udev/rules.d/52-telegraf-ipmi.rules`:
 
@@ -157,6 +176,17 @@ ipmi_sensor,server=10.20.2.203,name=power_supply_1,unit=watts status=1i,value=11
 ipmi_sensor,server=10.20.2.203,name=power_supply_2,unit=watts status=1i,value=120 1517125513000000000
 ipmi_sensor,server=10.20.2.203,name=power_supplies value=0,status=1i 1517125513000000000
 ipmi_sensor,server=10.20.2.203,name=fan_1,unit=percent status=1i,value=43.12 1517125513000000000
+```
+
+When retrieving stats from a remote server(customtag={'hostname':'example_host'} specified):
+
+```shell
+ipmi_sensor,server=10.20.2.203,hostname=example_host,name=uid_light value=0,status=1i 1517125513000000000
+ipmi_sensor,server=10.20.2.203,hostname=example_host,name=sys._health_led status=1i,value=0 1517125513000000000
+ipmi_sensor,server=10.20.2.203,hostname=example_host,name=power_supply_1,unit=watts status=1i,value=110 1517125513000000000
+ipmi_sensor,server=10.20.2.203,hostname=example_host,name=power_supply_2,unit=watts status=1i,value=120 1517125513000000000
+ipmi_sensor,server=10.20.2.203,hostname=example_host,name=power_supplies value=0,status=1i 1517125513000000000
+ipmi_sensor,server=10.20.2.203,hostname=example_host,name=fan_1,unit=percent status=1i,value=43.12 1517125513000000000
 ```
 
 When retrieving stats from the local machine (no server specified):
