@@ -51,16 +51,16 @@ type FormulaData struct {
 
 // Ipmi stores the configuration values for the ipmi_sensor input plugin
 type Ipmi struct {
-	Path          string
-	Privilege     string
-	HexKey        string   `toml:"hex_key"`
-	Servers       []Server `toml:"servers"`
-	Sensors       []string `toml:"sensors"`
-	Timeout       config.Duration
-	MetricVersion int
-	UseSudo       bool
-	UseCache      bool
-	CachePath     string
+	Path          string            `toml:"path"`
+	Privilege     string            `toml:"privilege"`
+	HexKey        string            `toml:"hex_key"`
+	Servers       []Server          `toml:"servers"`
+	Sensors       []string          `toml:"sensors"`
+	Timeout       config.Duration   `toml:"timeout"`
+	MetricVersion int               `toml:"metric_version"`
+	UseSudo       bool              `toml:"use_sudo"`
+	UseCache      bool              `toml:"use_cache"`
+	CachePath     string            `toml:"cache_path"`
 	Formula       map[string]string `toml:"formula"`
 	ExtraTags     []string          `toml:"extra_tags"`
 
@@ -91,6 +91,7 @@ func (m *Ipmi) Init() error {
 	if err := choice.CheckSlice(m.Sensors, []string{"sdr", "chassis_power_status", "dcmi_power_reading"}); err != nil {
 		return err
 	}
+
 	// Check parameters
 	if m.Path == "" {
 		return fmt.Errorf("no path for %q specified", cmd)
@@ -383,6 +384,7 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, extraTags Tags
 	// Temp             | 0Eh | ok  |  3.1 | 55 degrees C
 	// Drive 0          | A0h | ok  |  7.1 | Drive Present
 	scanner := bufio.NewScanner(bytes.NewReader(cmdOut))
+
 	for cpuIndex := 0; scanner.Scan(); {
 		ipmiFields := m.extractFieldsFromRegex(reV2ParseLine, scanner.Text())
 		if len(ipmiFields) < 3 || len(ipmiFields) > 4 {

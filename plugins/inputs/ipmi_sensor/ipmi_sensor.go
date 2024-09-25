@@ -113,7 +113,7 @@ func (m *Ipmi) Gather(acc telegraf.Accumulator) error {
 	return nil
 }
 
-func (m *Ipmi) parse(acc telegraf.Accumulator, server string, sensor string) error {
+func (m *Ipmi) parse(acc telegraf.Accumulator, server, sensor string) error {
 	var command []string
 	switch sensor {
 	case "sdr":
@@ -197,9 +197,11 @@ func (m *Ipmi) parseChassisPowerStatus(acc telegraf.Accumulator, hostname string
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "Chassis Power is on") {
-			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 1}, map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
+			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 1.0},
+				map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
 		} else if strings.Contains(line, "Chassis Power is off") {
-			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 0}, map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
+			acc.AddFields("ipmi_sensor", map[string]interface{}{"value": 0.0},
+				map[string]string{"name": "chassis_power_status", "server": hostname}, measuredAt)
 		}
 	}
 
