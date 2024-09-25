@@ -72,7 +72,7 @@ require (
 	github.com/digitalocean/go-libvirt v0.0.0-20240513153900-2d13115a1625
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/djherbis/times v1.6.0
-	github.com/docker/docker v27.1.1+incompatible
+	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/dynatrace-oss/dynatrace-metric-utils-go v0.5.0
 	github.com/eclipse/paho.golang v0.21.0
@@ -410,6 +410,7 @@ require (
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
