@@ -38,18 +38,17 @@ var (
 
 // Ipmi stores the configuration values for the ipmi_sensor input plugin
 type Ipmi struct {
-	Path          string
-	Privilege     string
-	HexKey        string `toml:"hex_key"`
-	Servers       []string
-	Sensors       []string `toml:"sensors"`
-	Timeout       config.Duration
-	MetricVersion int
-	UseSudo       bool
-	UseCache      bool
-	CachePath     string
-
-	Log telegraf.Logger `toml:"-"`
+	Path          string          `toml:"path"`
+	Privilege     string          `toml:"privilege"`
+	HexKey        string          `toml:"hex_key"`
+	Servers       []string        `toml:"servers"`
+	Sensors       []string        `toml:"sensors"`
+	Timeout       config.Duration `toml:"timeout"`
+	MetricVersion int             `toml:"metric_version"`
+	UseSudo       bool            `toml:"use_sudo"`
+	UseCache      bool            `toml:"use_cache"`
+	CachePath     string          `toml:"cache_path"`
+	Log           telegraf.Logger `toml:"-"`
 }
 
 const cmd = "ipmitool"
@@ -134,10 +133,9 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string, sensor string) err
 	if server != "" {
 		server := trimAll(server)
 		connInfo := regexp.MustCompile(`(.*\)),(\{.*\})`).FindStringSubmatch(server)
-		serverConn := server
 
 		if len(connInfo) > 2 {
-			serverConn = connInfo[1]
+			server = connInfo[1]
 			jsonBytes := []byte(strings.ReplaceAll(connInfo[2], "'", "\""))
 			err := json.Unmarshal(jsonBytes, &customTags)
 			if err != nil {
@@ -145,7 +143,7 @@ func (m *Ipmi) parse(acc telegraf.Accumulator, server string, sensor string) err
 			}
 		}
 
-		conn := NewConnection(serverConn, m.Privilege, m.HexKey)
+		conn := NewConnection(server, m.Privilege, m.HexKey)
 		hostname = conn.Hostname
 		opts = conn.options()
 	}
@@ -316,6 +314,7 @@ func (m *Ipmi) parseV1(acc telegraf.Accumulator, hostname string, customTags map
 		}
 
 		description := ipmiFields["description"]
+
 		// handle hex description field
 		if strings.HasPrefix(description, "0x") {
 			descriptionInt, err := strconv.ParseInt(description, 0, 64)
@@ -373,7 +372,7 @@ func (m *Ipmi) parseV2(acc telegraf.Accumulator, hostname string, customTags map
 			"name": tag,
 		}
 
-		// tag the server is we have oneserver
+		// tag the server is we have one
 		if hostname != "" {
 			tags["server"] = hostname
 		}
