@@ -145,7 +145,7 @@ require (
 	github.com/multiplay/go-ts3 v1.2.0
 	github.com/nats-io/nats-server/v2 v2.10.17
 	github.com/nats-io/nats.go v1.36.0
-	github.com/netsampler/goflow2/v2 v2.1.3
+	github.com/netsampler/goflow2/v2 v2.2.1
 	github.com/newrelic/newrelic-telemetry-sdk-go v0.8.1
 	github.com/nsqio/go-nsq v1.1.0
 	github.com/nwaples/tacplus v0.0.3
@@ -161,9 +161,9 @@ require (
 	github.com/peterbourgon/unixtransport v0.0.4
 	github.com/pion/dtls/v2 v2.2.11
 	github.com/prometheus-community/pro-bing v0.4.1
-	github.com/prometheus/client_golang v1.19.1
+	github.com/prometheus/client_golang v1.20.0
 	github.com/prometheus/client_model v0.6.1
-	github.com/prometheus/common v0.54.0
+	github.com/prometheus/common v0.55.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prometheus v0.53.1
 	github.com/rabbitmq/amqp091-go v1.10.0
