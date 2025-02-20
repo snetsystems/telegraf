@@ -21,6 +21,7 @@ resource.syso
 versioninfo.json
 .uuid
 
+telegraf.debug
 telegraf_debug.exe
 *.log
 *.out
