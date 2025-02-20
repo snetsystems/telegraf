@@ -235,10 +235,12 @@ type smi struct {
 		} `xml:"power_readings"`
 		Processes struct {
 			ProcessInfo []struct {
-				Pid         string `xml:"pid"`
-				Type        string `xml:"type"`
-				ProcessName string `xml:"process_name"`
-				UsedMemory  string `xml:"used_memory"`
+				GpuInstanceID     string `xml:"gpu_instance_id"`
+				ComputeInstanceID string `xml:"compute_instance_id"`
+				Pid               string `xml:"pid"`
+				Type              string `xml:"type"`
+				ProcessName       string `xml:"process_name"`
+				UsedMemory        string `xml:"used_memory"`
 			} `xml:"process_info"`
 		} `xml:"processes"`
 		ProductArchitecture string `xml:"product_architecture"`
