@@ -23,7 +23,13 @@ The Nutanix PRISM plugin uses the Nutanix API to gather metrics.
   enabled_services = ["cluster", "hosts", "disks", "vms"]
 
   ## Amount of time allowed to complete the HTTP(s) request.
-  # timeout = "5s"
+  # response_timeout = "5s"
+
+  ## Maximum number of consecutive failures before skipping all services.
+  ## After reaching this limit, all services will be skipped in subsequent gather cycles.
+  ## The plugin will automatically retry when connection is restored.
+  ## Default is 3.
+  # max_retries = 3
 
   ## Optional TLS Config
   # tls_ca = /path/to/cafile
