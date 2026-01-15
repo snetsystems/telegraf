@@ -2,7 +2,6 @@ package schema_v12
 
 import (
 	"encoding/xml"
-	"strconv"
 	"time"
 
 	"github.com/influxdata/telegraf"
@@ -25,12 +24,10 @@ func Parse(acc telegraf.Accumulator, buf []byte) error {
 	for i := range s.Gpu {
 		gpu := &s.Gpu[i]
 
-		tags := map[string]string{
-			"index": strconv.Itoa(i),
-		}
+		tags := map[string]string{}
 		fields := map[string]interface{}{}
 
-		common.SetTagIfUsed(tags, "pstate", gpu.PerformanceState)
+		common.SetTagIfUsed(tags, "index", gpu.MinorNumber)
 		common.SetTagIfUsed(tags, "name", gpu.ProductName)
 		common.SetTagIfUsed(tags, "arch", gpu.ProductArchitecture)
 		common.SetTagIfUsed(tags, "uuid", gpu.UUID)
@@ -43,6 +40,8 @@ func Parse(acc telegraf.Accumulator, buf []byte) error {
 		common.SetIfUsed("str", fields, "display_active", gpu.DisplayActive)
 		common.SetIfUsed("str", fields, "display_mode", gpu.DisplayMode)
 		common.SetIfUsed("str", fields, "current_ecc", gpu.EccMode.CurrentEcc)
+		common.SetIfUsed("str", fields, "performance_state", gpu.PerformanceState)
+		common.SetIfUsed("str", fields, "mig_mode", gpu.MigMode.CurrentMig)
 		common.SetIfUsed("int", fields, "fan_speed", gpu.FanSpeed)
 		common.SetIfUsed("int", fields, "memory_total", gpu.FbMemoryUsage.Total)
 		common.SetIfUsed("int", fields, "memory_used", gpu.FbMemoryUsage.Used)
@@ -56,7 +55,14 @@ func Parse(acc telegraf.Accumulator, buf []byte) error {
 		common.SetIfUsed("int", fields, "remapped_rows_uncorrectable", gpu.RemappedRows.Uncorrectable)
 		common.SetIfUsed("str", fields, "remapped_rows_pending", gpu.RemappedRows.Pending)
 		common.SetIfUsed("str", fields, "remapped_rows_failure", gpu.RemappedRows.Failure)
+		common.SetIfUsed("int", fields, "temperature_gpu_target", gpu.Temperature.GpuTargetTemperature)
 		common.SetIfUsed("int", fields, "temperature_gpu", gpu.Temperature.GpuTemp)
+		common.SetIfUsed("int", fields, "temperature_gpu_max_threshold", gpu.Temperature.GpuTempMaxGpuThreshold)
+		common.SetIfUsed("int", fields, "temperature_gpu_max_mem_threshold", gpu.Temperature.GpuTempMaxMemThreshold)
+		common.SetIfUsed("int", fields, "temperature_gpu_max_threshold", gpu.Temperature.GpuTempMaxThreshold)
+		common.SetIfUsed("int", fields, "temperature_gpu_slow_threshold", gpu.Temperature.GpuTempSlowThreshold)
+		common.SetIfUsed("int", fields, "temperature_gpu_tlimit", gpu.Temperature.GpuTempTlimit)
+		common.SetIfUsed("int", fields, "temperature_gpu_mem", gpu.Temperature.MemoryTemp)
 		common.SetIfUsed("int", fields, "utilization_gpu", gpu.Utilization.GpuUtil)
 		common.SetIfUsed("int", fields, "utilization_memory", gpu.Utilization.MemoryUtil)
 		common.SetIfUsed("int", fields, "utilization_encoder", gpu.Utilization.EncoderUtil)
@@ -65,6 +71,8 @@ func Parse(acc telegraf.Accumulator, buf []byte) error {
 		common.SetIfUsed("int", fields, "utilization_ofa", gpu.Utilization.OfaUtil)
 		common.SetIfUsed("int", fields, "pcie_link_gen_current", gpu.Pci.PciGpuLinkInfo.PcieGen.CurrentLinkGen)
 		common.SetIfUsed("int", fields, "pcie_link_width_current", gpu.Pci.PciGpuLinkInfo.LinkWidths.CurrentLinkWidth)
+		common.SetIfUsed("int", fields, "pcie_link_rx_util", gpu.Pci.RxUtil)
+		common.SetIfUsed("int", fields, "pcie_link_tx_util", gpu.Pci.TxUtil)
 		common.SetIfUsed("int", fields, "encoder_stats_session_count", gpu.EncoderStats.SessionCount)
 		common.SetIfUsed("int", fields, "encoder_stats_average_fps", gpu.EncoderStats.AverageFps)
 		common.SetIfUsed("int", fields, "encoder_stats_average_latency", gpu.EncoderStats.AverageLatency)
@@ -75,25 +83,29 @@ func Parse(acc telegraf.Accumulator, buf []byte) error {
 		common.SetIfUsed("int", fields, "clocks_current_sm", gpu.Clocks.SmClock)
 		common.SetIfUsed("int", fields, "clocks_current_memory", gpu.Clocks.MemClock)
 		common.SetIfUsed("int", fields, "clocks_current_video", gpu.Clocks.VideoClock)
-		common.SetIfUsed("float", fields, "power_draw", gpu.PowerReadings.PowerDraw)
-		common.SetIfUsed("float", fields, "power_limit", gpu.PowerReadings.PowerLimit)
-		common.SetIfUsed("float", fields, "power_draw", gpu.GpuPowerReadings.PowerDraw)
-		common.SetIfUsed("float", fields, "power_limit", gpu.GpuPowerReadings.PowerLimit)
+		common.SetIfUsed("float", fields, "gpu_power_draw", gpu.GpuPowerReadings.PowerDraw)
+		common.SetIfUsed("float", fields, "gpu_current_power_limit", gpu.GpuPowerReadings.CurrentPowerLimit)
+		common.SetIfUsed("float", fields, "gpu_default_power_limit", gpu.GpuPowerReadings.DefaultPowerLimit)
+		common.SetIfUsed("str", fields, "gpu_power_state", gpu.GpuPowerReadings.PowerState)
 		common.SetIfUsed("float", fields, "module_power_draw", gpu.ModulePowerReadings.PowerDraw)
+		common.SetIfUsed("float", fields, "module_current_power_limit", gpu.ModulePowerReadings.CurrentPowerLimit)
+		common.SetIfUsed("float", fields, "module_default_power_limit", gpu.ModulePowerReadings.DefaultPowerLimit)
+		common.SetIfUsed("str", fields, "module_power_state", gpu.ModulePowerReadings.PowerState)
 		acc.AddFields("nvidia_smi", fields, tags, timestamp)
 
 		for _, device := range gpu.MigDevices.MigDevice {
 			tags := map[string]string{}
-			common.SetTagIfUsed(tags, "index", device.Index)
+			common.SetTagIfUsed(tags, "index", gpu.MinorNumber)
+			common.SetTagIfUsed(tags, "mig_dev_index", device.Index)
 			common.SetTagIfUsed(tags, "gpu_index", device.GpuInstanceID)
 			common.SetTagIfUsed(tags, "compute_index", device.ComputeInstanceID)
-			common.SetTagIfUsed(tags, "pstate", gpu.PerformanceState)
 			common.SetTagIfUsed(tags, "name", gpu.ProductName)
 			common.SetTagIfUsed(tags, "arch", gpu.ProductArchitecture)
 			common.SetTagIfUsed(tags, "uuid", gpu.UUID)
 			common.SetTagIfUsed(tags, "compute_mode", gpu.ComputeMode)
 
 			fields := map[string]interface{}{}
+			common.SetIfUsed("str", fields, "performance_state", gpu.PerformanceState)
 			common.SetIfUsed("int", fields, "sram_uncorrectable", device.EccErrorCount.VolatileCount.SramUncorrectable)
 			common.SetIfUsed("int", fields, "memory_fb_total", device.FbMemoryUsage.Total)
 			common.SetIfUsed("int", fields, "memory_fb_reserved", device.FbMemoryUsage.Reserved)
@@ -108,6 +120,9 @@ func Parse(acc telegraf.Accumulator, buf []byte) error {
 
 		for _, process := range gpu.Processes.ProcessInfo {
 			tags := map[string]string{}
+			common.SetTagIfUsed(tags, "index", gpu.MinorNumber)
+			common.SetTagIfUsed(tags, "gpu_index", process.GpuInstanceID)
+			common.SetTagIfUsed(tags, "compute_index", process.ComputeInstanceID)
 			common.SetTagIfUsed(tags, "name", process.ProcessName)
 			common.SetTagIfUsed(tags, "type", process.Type)
 
