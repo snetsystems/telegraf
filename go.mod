@@ -1,6 +1,6 @@
 module github.com/influxdata/telegraf
 
-go 1.22.0
+go 1.24.0
 
 require (
 	cloud.google.com/go/bigquery v1.62.0
@@ -94,7 +94,7 @@ require (
 	github.com/golang/snappy v0.0.4
 	github.com/google/cel-go v0.20.1
 	github.com/google/gnxi v0.0.0-20231026134436-d82d9936af15
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/licensecheck v0.3.1
 	github.com/google/uuid v1.6.0
@@ -184,7 +184,7 @@ require (
 	github.com/snowflakedb/gosnowflake v1.10.0
 	github.com/srebhan/cborquery v1.0.1
 	github.com/srebhan/protobufquery v0.0.0-20230803132024-ae4c0d878e55
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.11.1
 	github.com/tbrandon/mbserver v0.0.0-20170611213546-993e1772cc62
 	github.com/testcontainers/testcontainers-go v0.32.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.32.0
@@ -203,7 +203,7 @@ require (
 	go.mongodb.org/mongo-driver v1.16.0
 	go.opentelemetry.io/collector/pdata v1.8.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0
-	go.opentelemetry.io/otel/sdk/metric v1.31.0
+	go.opentelemetry.io/otel/sdk/metric v1.39.0
 	go.starlark.net v0.0.0-20240520160348-046347dcd104
 	go.step.sm/crypto v0.50.0
 	golang.org/x/crypto v0.28.0
@@ -211,7 +211,7 @@ require (
 	golang.org/x/net v0.30.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.8.0
-	golang.org/x/sys v0.26.0
+	golang.org/x/sys v0.39.0
 	golang.org/x/term v0.25.0
 	golang.org/x/text v0.19.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671
@@ -232,6 +232,8 @@ require (
 )
 
 require github.com/godror/godror v0.25.3
+
+require go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
@@ -327,7 +329,7 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
@@ -481,10 +483,10 @@ require (
 	go.opentelemetry.io/collector/semconv v0.101.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 // indirect
-	go.opentelemetry.io/otel v1.31.0 // indirect
-	go.opentelemetry.io/otel/metric v1.31.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.31.0 // indirect
-	go.opentelemetry.io/otel/trace v1.31.0 // indirect
+	go.opentelemetry.io/otel v1.39.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.2.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
