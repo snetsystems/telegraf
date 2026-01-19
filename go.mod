@@ -1,6 +1,6 @@
 module github.com/influxdata/telegraf
 
-go 1.22.0
+go 1.24.0
 
 require (
 	cloud.google.com/go/bigquery v1.62.0
@@ -171,7 +171,7 @@ require (
 	github.com/riemann/riemann-go-client v0.5.1-0.20211206220514-f58f10cdce16
 	github.com/robbiet480/go.nut v0.0.0-20220219091450-bd8f121e1fa1
 	github.com/robinson/gos7 v0.0.0-20240315073918-1f14519e4846
-	github.com/safchain/ethtool v0.3.0
+	github.com/safchain/ethtool v0.7.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/seancfoley/ipaddress-go v1.6.0
 	github.com/sensu/sensu-go/api/core/v2 v2.16.0
@@ -211,7 +211,7 @@ require (
 	golang.org/x/net v0.30.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.8.0
-	golang.org/x/sys v0.26.0
+	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.25.0
 	golang.org/x/text v0.19.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671
