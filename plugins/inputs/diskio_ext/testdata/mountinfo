@@ -1,0 +1,4 @@
+36 35 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=continue
+37 35 8:2 / /home rw,relatime shared:2 - ext4 /dev/sda2 rw
+38 35 253:0 / /var/log rw,relatime shared:3 - xfs /dev/mapper/centos-var_log rw
+39 35 8:1 / /mnt/backup rw,relatime shared:4 - ext4 /dev/sda1 rw
