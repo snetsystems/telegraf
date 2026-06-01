@@ -3,10 +3,10 @@ package diskio_ext
 import (
 	"testing"
 
-	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/stretchr/testify/require"
 
-	"github.com/influxdata/telegraf/plugins/inputs/system"
+	"github.com/influxdata/telegraf/plugins/common/psutil"
 	"github.com/influxdata/telegraf/testutil"
 )
 
@@ -102,7 +102,7 @@ func TestDiskIO(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mps system.MockPS
+			var mps psutil.MockPS
 			mps.On("DiskIO").Return(tt.result.stats, tt.result.err)
 
 			var acc testutil.Accumulator
@@ -110,7 +110,7 @@ func TestDiskIO(t *testing.T) {
 			diskio := &DiskIO{
 				Log:           testutil.Logger{},
 				ps:            &mps,
-				DeviceInclude:       tt.devices,
+				DeviceInclude: tt.devices,
 				mountInfoPath: "testdata/non-existent-mountinfo",
 			}
 			require.NoError(t, diskio.Init())
@@ -130,7 +130,7 @@ func TestDiskIO(t *testing.T) {
 }
 
 func TestDiskIO_DeviceExclude(t *testing.T) {
-	var mps system.MockPS
+	var mps psutil.MockPS
 	mps.On("DiskIO").Return(
 		map[string]disk.IOCountersStat{
 			"sda":   {Name: "sda", ReadCount: 100},
