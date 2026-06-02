@@ -436,6 +436,7 @@ func (t *Telegraf) runAgent(ctx context.Context, reloadConfig bool) error {
 	c := t.cfg
 	var err error
 	if reloadConfig {
+		config.ResetSecrets()
 		if c, err = t.loadConfiguration(); err != nil {
 			return err
 		}

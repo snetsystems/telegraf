@@ -1,0 +1,157 @@
+package diskio_ext
+
+import (
+	"testing"
+
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/stretchr/testify/require"
+
+	"github.com/influxdata/telegraf/plugins/common/psutil"
+	"github.com/influxdata/telegraf/testutil"
+)
+
+func TestDiskIO(t *testing.T) {
+	type Result struct {
+		stats map[string]disk.IOCountersStat
+		err   error
+	}
+	type Metric struct {
+		tags   map[string]string
+		fields map[string]interface{}
+	}
+
+	tests := []struct {
+		name    string
+		devices []string
+		result  Result
+		err     error
+		metrics []Metric
+	}{
+		{
+			name: "minimal",
+			result: Result{
+				stats: map[string]disk.IOCountersStat{
+					"sda": {
+						ReadCount:        888,
+						WriteCount:       5341,
+						ReadBytes:        100000,
+						WriteBytes:       200000,
+						ReadTime:         7123,
+						WriteTime:        9087,
+						MergedReadCount:  11,
+						MergedWriteCount: 12,
+						Name:             "sda",
+						IoTime:           123552,
+						SerialNumber:     "ab-123-ad",
+					},
+				},
+				err: nil,
+			},
+			err: nil,
+			metrics: []Metric{
+				{
+					tags: map[string]string{
+						"name":   "sda",
+						"serial": "ab-123-ad",
+					},
+					fields: map[string]interface{}{
+						"reads":            uint64(888),
+						"writes":           uint64(5341),
+						"read_bytes":       uint64(100000),
+						"write_bytes":      uint64(200000),
+						"read_time":        uint64(7123),
+						"write_time":       uint64(9087),
+						"io_time":          uint64(123552),
+						"weighted_io_time": uint64(0),
+						"iops_in_progress": uint64(0),
+						"merged_reads":     uint64(11),
+						"merged_writes":    uint64(12),
+					},
+				},
+			},
+		},
+		{
+			name:    "glob device",
+			devices: []string{"sd*"},
+			result: Result{
+				stats: map[string]disk.IOCountersStat{
+					"sda": {
+						Name:      "sda",
+						ReadCount: 42,
+					},
+					"vda": {
+						Name:      "vda",
+						ReadCount: 42,
+					},
+				},
+				err: nil,
+			},
+			err: nil,
+			metrics: []Metric{
+				{
+					tags: map[string]string{
+						"name":   "sda",
+						"serial": "unknown",
+					},
+					fields: map[string]interface{}{
+						"reads": uint64(42),
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mps psutil.MockPS
+			mps.On("DiskIO").Return(tt.result.stats, tt.result.err)
+
+			var acc testutil.Accumulator
+
+			diskio := &DiskIO{
+				Log:           testutil.Logger{},
+				ps:            &mps,
+				DeviceInclude: tt.devices,
+				mountInfoPath: "testdata/non-existent-mountinfo",
+			}
+			require.NoError(t, diskio.Init())
+			err := diskio.Gather(&acc)
+			require.Equal(t, tt.err, err)
+
+			for _, metric := range tt.metrics {
+				for k, v := range metric.fields {
+					require.True(t, acc.HasPoint("diskio_ext", metric.tags, k, v),
+						"missing point: diskio_ext %v %q: %v", metric.tags, k, v)
+				}
+			}
+			require.Len(t, tt.metrics, int(acc.NMetrics()), "unexpected number of metrics")
+			require.True(t, mps.AssertExpectations(t))
+		})
+	}
+}
+
+func TestDiskIO_DeviceExclude(t *testing.T) {
+	var mps psutil.MockPS
+	mps.On("DiskIO").Return(
+		map[string]disk.IOCountersStat{
+			"sda":   {Name: "sda", ReadCount: 100},
+			"loop0": {Name: "loop0", ReadCount: 10},
+			"loop1": {Name: "loop1", ReadCount: 20},
+			"sr0":   {Name: "sr0", ReadCount: 5},
+			"ram0":  {Name: "ram0", ReadCount: 1},
+		}, nil,
+	)
+
+	var acc testutil.Accumulator
+	diskio := &DiskIO{
+		Log:           testutil.Logger{},
+		ps:            &mps,
+		DeviceExclude: []string{"loop*", "sr*", "ram*"},
+		mountInfoPath: "testdata/non-existent-mountinfo",
+	}
+	require.NoError(t, diskio.Init())
+	require.NoError(t, diskio.Gather(&acc))
+
+	// Only "sda" should remain; loop0, loop1, sr0, ram0 should be excluded
+	require.Equal(t, uint64(1), acc.NMetrics(), "expected only 1 metric after exclusion")
+	require.True(t, acc.HasPoint("diskio_ext", map[string]string{"name": "sda", "serial": "unknown"}, "reads", uint64(100)))
+}

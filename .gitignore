@@ -1,6 +1,5 @@
 /.idea
 /build
-/etc/telegraf.conf
 /telegraf
 /telegraf.exe
 /telegraf.gz
@@ -15,9 +14,14 @@
 /vendor
 .DS_Store
 process.yml
-/.vscode
 /*.toml
 /*.conf
 resource.syso
 versioninfo.json
 .uuid
+
+telegraf.debug
+telegraf_debug.exe
+*.log
+*.out
+nul

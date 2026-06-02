@@ -14,6 +14,7 @@ type connection struct {
 	intf      string
 	privilege string
 	hexKey    string
+	ipmiIP    string
 }
 
 func newConnection(server, privilege, hexKey string) *connection {
@@ -41,7 +42,15 @@ func newConnection(server, privilege, hexKey string) *connection {
 		inx3 := strings.Index(connstr, ")")
 
 		conn.intf = connstr[0:inx2]
-		conn.hostname = connstr[inx2+1 : inx3]
+		conn.ipmiIP = connstr[inx2+1 : inx3]
+	}
+
+	if inx := strings.LastIndex(connstr, ","); inx > 0 && inx < len(connstr)-1 {
+		conn.hostname = connstr[inx+1:]
+	}
+
+	if conn.ipmiIP == "" {
+		conn.ipmiIP = conn.hostname
 	}
 
 	return conn
@@ -54,7 +63,7 @@ func (c *connection) options() []string {
 	}
 
 	options := []string{
-		"-H", c.hostname,
+		"-H", c.ipmiIP,
 		"-U", c.username,
 		"-P", c.password,
 		"-I", intf,
