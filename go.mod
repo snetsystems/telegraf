@@ -234,15 +234,15 @@ require (
 	go.starlark.net v0.0.0-20260102030733-3fee463870c9
 	go.step.sm/crypto v0.76.0
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.53.0
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
-	golang.org/x/mod v0.33.0
-	golang.org/x/net v0.50.0
+	golang.org/x/mod v0.36.0
+	golang.org/x/net v0.56.0
 	golang.org/x/oauth2 v0.35.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.41.0
-	golang.org/x/term v0.40.0
-	golang.org/x/text v0.34.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0
+	golang.org/x/term v0.44.0
+	golang.org/x/text v0.38.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671
 	gonum.org/v1/gonum v0.17.0
 	google.golang.org/api v0.266.0
@@ -574,9 +574,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
+	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
+	golang.org/x/tools v0.45.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20211209221555-9c9e7e272434 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
